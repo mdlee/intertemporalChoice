@@ -1,6 +1,7 @@
 # Large MCMC outputs
 models/storage/
 models/mnCIsave/
+models/tmp/
 
 # Local literature PDFs
 literature/
