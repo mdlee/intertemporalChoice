@@ -1,0 +1,158 @@
+# LATENT MIXTURE — hierarchical (Grünwald entropification: one w per participant)
+# P(LL | rule favors LL) = 1/(1+exp(-w[i])); P(LL | rule favors SS) = 1/(1+exp(w[i]))
+# Latent sign matches probit0; w[i] > 0 (Lee/Grünwald, w >= 0).
+# Group / individual priors truncated to keep slice sampling away from
+# extreme scales (matches individual-model supports where applicable).
+model{
+
+  # ---- group-level hyperpriors (bounded) ----
+  # exponential
+  mu_kappaEX ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_kappaEX ~ dgamma(1, 1) T(0.05, 25)
+  # hyperbolic
+  mu_kappaHC ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_kappaHC ~ dgamma(1, 1) T(0.05, 25)
+  # hyperboloid
+  mu_kappaHY ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_kappaHY ~ dgamma(1, 1) T(0.05, 25)
+  mu_tauHY ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_tauHY ~ dgamma(1, 1) T(0.05, 25)
+  # proportional differences
+  mu_deltaPD ~ dnorm(0, 4) T(-2, 2)
+  tau_deltaPD ~ dgamma(1, 1) T(0.05, 25)
+  # direct differences
+  mu_deltaDD ~ dnorm(0, 1.0E-6) T(-2000, 2000)
+  tau_deltaDD ~ dgamma(1, 1) T(0.05, 25)
+  mu_omegaDD ~ dnorm(0.5, 4) T(0.01, 0.99)
+  tau_omegaDD ~ dgamma(1, 1) T(0.05, 25)
+  # tradeoff
+  mu_gammaTR ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_gammaTR ~ dgamma(1, 1) T(0.05, 25)
+  mu_tauTR ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_tauTR ~ dgamma(1, 1) T(0.05, 25)
+  mu_kappaTR ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_kappaTR ~ dgamma(1, 1) T(0.05, 25)
+  mu_varthetaTR ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_varthetaTR ~ dgamma(1, 1) T(0.05, 25)
+  # unified tradeoff
+  mu_gammaUT ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_gammaUT ~ dgamma(1, 1) T(0.05, 25)
+  mu_tauUT ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_tauUT ~ dgamma(1, 1) T(0.05, 25)
+  mu_kappaUT ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_kappaUT ~ dgamma(1, 1) T(0.05, 25)
+  mu_varthetaUT ~ dnorm(1, 4) T(1.0E-4, 100)
+  tau_varthetaUT ~ dgamma(1, 1) T(0.05, 25)
+  mu_etaUT ~ dnorm(0, 4) T(0, 500)
+  tau_etaUT ~ dgamma(1, 1) T(0.05, 25)
+  # itch
+  mu_beta0IT ~ dnorm(0, 4) T(-2, 2)
+  tau_beta0IT ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaRAIT ~ dnorm(0, 4) T(-2, 2)
+  tau_betaRAIT ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaRRIT ~ dnorm(0, 4) T(-2, 2)
+  tau_betaRRIT ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaTAIT ~ dnorm(0, 4) T(-2, 2)
+  tau_betaTAIT ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaTRIT ~ dnorm(0, 4) T(-2, 2)
+  tau_betaTRIT ~ dgamma(1, 1) T(0.05, 25)
+  # ll / ss (same support as dunif(0.9, 1) in individual model)
+  mu_alphaLL ~ dnorm(0.95, 400) T(0.9, 1)
+  tau_alphaLL ~ dgamma(1, 1) T(0.05, 25)
+  mu_alphaSS ~ dnorm(0.95, 400) T(0.9, 1)
+  tau_alphaSS ~ dgamma(1, 1) T(0.05, 25)
+
+  # entropification consistency (participant-level w)
+  mu_w ~ dnorm(2, 1) T(0, 20)
+  tau_w ~ dgamma(1, 1) T(0.05, 25)
+
+  for (i in 1:nParticipants){
+
+    z[i] ~ dcat(rep(1, nModels))
+
+    w[i] ~ dnorm(mu_w, tau_w) T(0, 20)
+
+    # participant parameters (truncated to group support)
+    kappaEX[i] ~ dnorm(mu_kappaEX, tau_kappaEX) T(1.0E-4, 100)
+
+    kappaHC[i] ~ dnorm(mu_kappaHC, tau_kappaHC) T(1.0E-4, 100)
+
+    kappaHY[i] ~ dnorm(mu_kappaHY, tau_kappaHY) T(1.0E-4, 100)
+    tauHY[i] ~ dnorm(mu_tauHY, tau_tauHY) T(1.0E-4, 100)
+
+    deltaPD[i] ~ dnorm(mu_deltaPD, tau_deltaPD) T(-2, 2)
+
+    deltaDD[i] ~ dnorm(mu_deltaDD, tau_deltaDD) T(-2000, 2000)
+    omegaDD[i] ~ dnorm(mu_omegaDD, tau_omegaDD) T(0.01, 0.99)
+
+    gammaTR[i] ~ dnorm(mu_gammaTR, tau_gammaTR) T(1.0E-4, 100)
+    tauTR[i] ~ dnorm(mu_tauTR, tau_tauTR) T(1.0E-4, 100)
+    kappaTR[i] ~ dnorm(mu_kappaTR, tau_kappaTR) T(1.0E-4, 100)
+    varthetaTR[i] ~ dnorm(mu_varthetaTR, tau_varthetaTR) T(1.0E-4, 100)
+
+    gammaUT[i] ~ dnorm(mu_gammaUT, tau_gammaUT) T(1.0E-4, 100)
+    tauUT[i] ~ dnorm(mu_tauUT, tau_tauUT) T(1.0E-4, 100)
+    kappaUT[i] ~ dnorm(mu_kappaUT, tau_kappaUT) T(1.0E-4, 100)
+    varthetaUT[i] ~ dnorm(mu_varthetaUT, tau_varthetaUT) T(1.0E-4, 100)
+    etaUT[i] ~ dnorm(mu_etaUT, tau_etaUT) T(0, 500)
+
+    beta0IT[i] ~ dnorm(mu_beta0IT, tau_beta0IT) T(-2, 2)
+    betaRAIT[i] ~ dnorm(mu_betaRAIT, tau_betaRAIT) T(-2, 2)
+    betaRRIT[i] ~ dnorm(mu_betaRRIT, tau_betaRRIT) T(-2, 2)
+    betaTAIT[i] ~ dnorm(mu_betaTAIT, tau_betaTAIT) T(-2, 2)
+    betaTRIT[i] ~ dnorm(mu_betaTRIT, tau_betaTRIT) T(-2, 2)
+
+    alphaLL[i] ~ dnorm(mu_alphaLL, tau_alphaLL) T(0.901, 0.999)
+    alphaSS[i] ~ dnorm(mu_alphaSS, tau_alphaSS) T(0.901, 0.999)
+
+    for (j in 1:nTrials){
+      decision[i, j] ~ dbern(theta[i, j, z[i]])
+
+      valueLLEX[i, j] = rLL[i, j]*exp(-kappaEX[i]*tLL[i, j])
+      valueSSEX[i, j] = rSS[i, j]*exp(-kappaEX[i]*tSS[i, j])
+      theta[i, j, 1] = ifelse(step(valueLLEX[i, j] - valueSSEX[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      valueLLHC[i, j] = rLL[i, j]/(1 + kappaHC[i]*tLL[i, j])
+      valueSSHC[i, j] = rSS[i, j]/(1 + kappaHC[i]*tSS[i, j])
+      theta[i, j, 2] = ifelse(step(valueLLHC[i, j] - valueSSHC[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      valueLLHY[i, j] = rLL[i, j]/(1 + kappaHY[i]*tLL[i, j])^tauHY[i]
+      valueSSHY[i, j] = rSS[i, j]/(1 + kappaHY[i]*tSS[i, j])^tauHY[i]
+      theta[i, j, 3] = ifelse(step(valueLLHY[i, j] - valueSSHY[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      diffRewardRPD[i, j] = (rLL[i, j] - rSS[i, j])/rLL[i, j]
+      diffTimeRPD[i, j] = (tLL[i, j] - tSS[i, j])/tLL[i, j]
+      theta[i, j, 4] = ifelse(step(diffRewardRPD[i, j] - diffTimeRPD[i, j] - deltaPD[i]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      diffRewardRDD[i, j] = omegaDD[i]*(rLL[i, j] - rSS[i, j])
+      diffTimeRDD[i, j] = (1 - omegaDD[i])*(tLL[i, j] - tSS[i, j])
+      theta[i, j, 5] = ifelse(step(diffRewardRDD[i, j] - diffTimeRDD[i, j] - deltaDD[i]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      valueLLTR[i, j] = 1/gammaTR[i]*log(1 + gammaTR[i]*rLL[i, j])
+      valueSSTR[i, j] = 1/gammaTR[i]*log(1 + gammaTR[i]*rSS[i, j])
+      weightLLTR[i, j] = 1/tauTR[i]*log(1 + tauTR[i]*tLL[i, j])
+      weightSSTR[i, j] = 1/tauTR[i]*log(1 + tauTR[i]*tSS[i, j])
+      qValueTR[i, j] = valueLLTR[i, j] - valueSSTR[i, j]
+      qTimeTR[i, j] = kappaTR[i]*log(1 + ((weightLLTR[i, j] - weightSSTR[i, j])/varthetaTR[i])^varthetaTR[i])
+      theta[i, j, 6] = ifelse(step(qValueTR[i, j] - qTimeTR[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      valueLLUT[i, j] = 1/gammaUT[i]*log(1 + gammaUT[i]*(rLL[i, j] - etaUT[i]))
+      valueSSUT[i, j] = 1/gammaUT[i]*log(1 + gammaUT[i]*rSS[i, j])
+      weightLLUT[i, j] = 1/tauUT[i]*log(1 + tauUT[i]*tLL[i, j])
+      weightSSUT[i, j] = 1/tauUT[i]*log(1 + tauUT[i]*tSS[i, j])
+      qValueUT[i, j] = valueLLUT[i, j] - valueSSUT[i, j]
+      qTimeUT[i, j] = kappaUT[i]*log(1 + ((weightLLUT[i, j] - weightSSUT[i, j])/varthetaUT[i])^varthetaUT[i])
+      theta[i, j, 7] = ifelse(step(qValueUT[i, j] - qTimeUT[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      diffRewardAIT[i, j] = betaRAIT[i]*(rLL[i, j] - rSS[i, j])
+      diffRewardRIT[i, j] = betaRRIT[i]*((rLL[i, j] - rSS[i, j])/(0.5*(rLL[i, j] + rSS[i, j])))
+      diffTimeAIT[i, j] = betaTAIT[i]*(tLL[i, j] - tSS[i, j])
+      diffTimeRIT[i, j] = betaTRIT[i]*((tLL[i, j] - tSS[i, j])/(0.5*(tLL[i, j] + tSS[i, j])))
+      theta[i, j, 8] = ifelse(step(beta0IT[i] + diffRewardAIT[i, j] + diffRewardRIT[i, j] + diffTimeAIT[i, j] + diffTimeRIT[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+
+      theta[i, j, 9] = 0.5
+      theta[i, j, 10] = alphaLL[i]
+      theta[i, j, 11] = 1 - alphaSS[i]
+    }
+  }
+}

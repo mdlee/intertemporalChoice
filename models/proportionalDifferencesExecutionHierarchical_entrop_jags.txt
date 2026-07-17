@@ -1,0 +1,20 @@
+# Generated from /home/mdlee/Dropbox/otherPapers/intertemporalChoice/models/proportionalDifferencesExecutionHierarchical_jags.txt; Grünwald entropification (one w per participant)
+# P(LL | rule favors LL) = 1/(1+exp(-w[i])); latent sign matches probit0
+
+# PROPORTIONAL DIFFERENCES — hierarchical execution
+model{
+  mu_delta ~ dnorm(0, 4) T(-2, 2)
+  tau_delta ~ dgamma(1, 1) T(0.05, 25)
+  mu_w ~ dnorm(2, 1) T(0, 20)
+  tau_w ~ dgamma(1, 1) T(0.05, 25)
+  for (i in 1:nParticipants){
+    delta[i] ~ dnorm(mu_delta, tau_delta) T(-2, 2)
+    w[i] ~ dnorm(mu_w, tau_w) T(0, 20)
+    for (j in 1:nTrials){
+      diffRewardR[i, j] = (rLL[i, j] - rSS[i, j])/rLL[i, j]
+      diffTimeR[i, j] = (tLL[i, j] - tSS[i, j])/tLL[i, j]
+      theta[i, j] = ifelse(step(diffRewardR[i, j] - diffTimeR[i, j] - delta[i]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+      decision[i, j] ~ dbern(theta[i, j])
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# Large MCMC outputs
+models/storage/
+models/mnCIsave/
+
+# Local literature PDFs
+literature/
+
+# Manuscript drafts / LaTeX build
+manuscripts/
+
+# Models subfolders not for version control
+models/figures/
+models/stan/
+models/old/
+models/tables/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.asv
+*~
