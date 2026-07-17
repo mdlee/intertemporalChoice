@@ -1,10 +1,13 @@
 function [rMax, rHatByParticipant, keepChains] = assessHierarchicalThetaRhat( ...
-  chains, data, d, modelName, keepChainsMin, rhatCritical)
+  chains, data, d, modelName, keepChainsMin, rhatCritical, participantIndices)
 %ASSESSHIERARCHICALTHETARHAT  Gelman-Rubin R-hat on reconstructed theta (PP probs).
 %
 %   JAGS defines theta[i,j] but does not monitor it (no PP replicates either).
 %   This rebuilds trial-mean P(LL) per MCMC draw — the quantity that drives the
 %   MATLAB posterior-predictive figures — and reports R-hat by participant.
+%
+%   Currently implemented only for unified tradeoff (entrop), including
+%   MuPrecHalf / MuPrecDouble prior-robustness stems.
 
 if nargin < 5 || isempty(keepChainsMin)
   keepChainsMin = 8;
@@ -12,12 +15,35 @@ end
 if nargin < 6 || isempty(rhatCritical)
   rhatCritical = 1.4;
 end
+if nargin < 7 || isempty(participantIndices)
+  participantIndices = 1:double(d.nParticipants);
+else
+  participantIndices = unique(double(participantIndices(:)'), 'stable');
+end
+
+baseName = modelName;
+if endsWith(baseName, '_entrop')
+  baseName = extractBefore(baseName, '_entrop');
+end
+baseName = strrep(baseName, 'MuPrecHalf', '');
+baseName = strrep(baseName, 'MuPrecDouble', '');
+if ~strcmp(baseName, 'unifiedTradeoffExecutionHierarchical')
+  error('assessHierarchicalThetaRhat:unsupported', ...
+    'theta R-hat only implemented for unified tradeoff (got %s)', modelName);
+end
 
 nP = double(d.nParticipants);
+if any(~isfinite(participantIndices)) || ...
+    any(participantIndices ~= round(participantIndices)) || ...
+    any(participantIndices < 1) || any(participantIndices > nP)
+  error('assessHierarchicalThetaRhat:badIndices', ...
+    'participantIndices must contain integer indices from 1 to %d.', nP);
+end
 rHatByParticipant = nan(nP, 1);
 keepChains = [];
+firstSelected = true;
 
-for pp = 1:nP
+for pp = participantIndices
   ThMean = trialMeanThetaMatrix(chains, data, modelName, pp);  % nSamples × nChains
   rHatByParticipant(pp) = gelmanRubinSafeMatrix(ThMean);
 
@@ -30,21 +56,26 @@ for pp = 1:nP
     end
   end
 
-  if pp == 1
+  if firstSelected
     keepChains = kc;
+    firstSelected = false;
   else
     keepChains = intersect(keepChains, kc, 'stable');
   end
 end
 
-rMax = max(rHatByParticipant);
+rMax = max(rHatByParticipant(participantIndices));
 if isempty(keepChains)
-  keepChains = 1:size(trialMeanThetaMatrix(chains, data, modelName, 1), 2);
+  keepChains = 1:size(trialMeanThetaMatrix( ...
+    chains, data, modelName, participantIndices(1)), 2);
 end
 
-fprintf('theta (trial-mean P(LL) / PP) R-hat: max=%.3f, min=%.3f; keep %d chains\n', ...
-  rMax, min(rHatByParticipant), numel(keepChains));
-[sorted, idx] = sort(rHatByParticipant, 'descend');
+fprintf(['theta (trial-mean P(LL) / PP) R-hat over %d participant(s): ' ...
+  'max=%.3f, min=%.3f; keep %d chains\n'], ...
+  numel(participantIndices), rMax, ...
+  min(rHatByParticipant(participantIndices)), numel(keepChains));
+[sorted, ord] = sort(rHatByParticipant(participantIndices), 'descend');
+idx = participantIndices(ord);
 for k = 1:min(5, numel(sorted))
   fprintf('  p%d theta R-hat=%.3f\n', idx(k), sorted(k));
 end
@@ -83,6 +114,8 @@ baseName = modelName;
 if useEntrop
   baseName = extractBefore(modelName, '_entrop');
 end
+baseName = strrep(baseName, 'MuPrecHalf', '');
+baseName = strrep(baseName, 'MuPrecDouble', '');
 if ~strcmp(baseName, 'unifiedTradeoffExecutionHierarchical')
   error('assessHierarchicalThetaRhat:unsupported', 'Unhandled model %s', modelName);
 end

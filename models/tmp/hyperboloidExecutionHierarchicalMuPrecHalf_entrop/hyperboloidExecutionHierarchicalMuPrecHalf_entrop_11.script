@@ -1,0 +1,12 @@
+model in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperboloidExecutionHierarchicalMuPrecHalf_entrop/hyperboloidExecutionHierarchicalMuPrecHalf_entrop_jags.jags"
+data in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperboloidExecutionHierarchicalMuPrecHalf_entrop/hyperboloidExecutionHierarchicalMuPrecHalf_entrop.data"
+compile, nchains(1)
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperboloidExecutionHierarchicalMuPrecHalf_entrop/hyperboloidExecutionHierarchicalMuPrecHalf_entrop_11.init"
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperboloidExecutionHierarchicalMuPrecHalf_entrop/hyperboloidExecutionHierarchicalMuPrecHalf_entrop_11.seed"
+initialize
+update 2000
+monitor set kappa, thin(1024)
+monitor set tau, thin(1024)
+monitor set w, thin(1024)
+update 5120000
+coda *, stem('samples_11_')

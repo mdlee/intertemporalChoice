@@ -14,6 +14,9 @@ useEntrop = endsWith(modelName, '_entrop');
 if useEntrop
   modelName = extractBefore(modelName, '_entrop');
 end
+% Prior-robustness stems: ...MuPrecHalf_entrop / ...MuPrecDouble_entrop
+modelName = strrep(modelName, 'MuPrecHalf', '');
+modelName = strrep(modelName, 'MuPrecDouble', '');
 
 switch modelName
   case 'exponentialExecutionHierarchical'

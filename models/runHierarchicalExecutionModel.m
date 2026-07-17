@@ -6,6 +6,8 @@ function [converged, attemptInfo] = runHierarchicalExecutionModel(modelName, mon
 %   Unless singleAttempt is true, retries with doubled thinning until converged.
 %   preLoad (default true): use storage only if max R-hat <= rhatCritical.
 %   Failed runs save storage/{modelName}_mcmcState.mat.
+%   rhatParticipants optionally restricts the convergence gate to selected
+%   participants; all participants remain in the hierarchical model.
 %
 %   [CONVERGED, ATTEMPTINFO] = ... also returns rMax, rHatByParam, nThin, keepChains.
 
@@ -26,11 +28,13 @@ addParameter(p, 'dataDir', '', @ischar);
 addParameter(p, 'saveFigures', true, @islogical);
 addParameter(p, 'resetThin', false, @islogical);
 addParameter(p, 'saveOnConverge', true, @islogical);
+addParameter(p, 'rhatParticipants', [], @isnumeric);
 parse(p, varargin{:});
 
 attemptInfo = struct('rMax', nan, 'rHatByParam', struct(), 'nThin', p.Results.nThin, ...
   'keepChains', [], 'elapsedSec', nan, 'chains', [], ...
-  'thetaRMax', nan, 'thetaRHatByParticipant', [], 'thetaKeepChains', []);
+  'thetaRMax', nan, 'thetaRHatByParticipant', [], 'thetaKeepChains', [], ...
+  'rhatParticipants', []);
 
 engine = 'jags';
 monitorParams = cellstr(monitorParams(:));
@@ -43,6 +47,15 @@ addpath(generalDir);
 cleanupObj = onCleanup(@() rmpath(generalDir));
 
 [data, d] = prepareIntertemporalChoiceData(p.Results.dataName, p.Results.dataDir);
+rhatParticipants = normalizeParticipantIndices( ...
+  p.Results.rhatParticipants, double(d.nParticipants));
+attemptInfo.rhatParticipants = rhatParticipants;
+if isempty(rhatParticipants)
+  fprintf('Convergence gate: all %d participants\n', double(d.nParticipants));
+else
+  fprintf('Convergence gate: participants [%s] (%d/%d); model still includes all participants\n', ...
+    sprintf('%d ', rhatParticipants), numel(rhatParticipants), double(d.nParticipants));
+end
 
 if nargin < 3 || isempty(initGenerator)
   if any(strcmp(monitorParams, 'w'))
@@ -78,7 +91,8 @@ if p.Results.preLoad && isfile(storagePath)
   if isfield(S, 'info'), info = S.info; end
 
   [rMax, keepChains, rHatByParam] = maxRhatOverMonitoredParams( ...
-    chains, monitorParams, p.Results.keepChainsMin, p.Results.rhatCritical);
+    chains, monitorParams, p.Results.keepChainsMin, p.Results.rhatCritical, ...
+    rhatParticipants);
   attemptInfo.rMax = rMax;
   attemptInfo.rHatByParam = rHatByParam;
   attemptInfo.keepChains = keepChains;
@@ -113,7 +127,7 @@ converged = false;
 while ~converged
   [stats, chains, diagnostics, info, rMax, keepChains, rHatByParam, nThin] = ...
     fitHierarchicalExecutionOnce(engine, modelName, monitorParams, data, initGenerator, ...
-    nThin, nBurnin, p.Results, figuresDir);
+    nThin, nBurnin, p.Results, figuresDir, rhatParticipants);
 
   attemptInfo.rMax = rMax;
   attemptInfo.rHatByParam = rHatByParam;
@@ -122,7 +136,8 @@ while ~converged
   attemptInfo.chains = chains;
   try
     [thetaRMax, thetaRHatByP, thetaKeep] = assessHierarchicalThetaRhat( ...
-      chains, data, d, modelName, p.Results.keepChainsMin, p.Results.rhatCritical);
+      chains, data, d, modelName, p.Results.keepChainsMin, ...
+      p.Results.rhatCritical, rhatParticipants);
     attemptInfo.thetaRMax = thetaRMax;
     attemptInfo.thetaRHatByParticipant = thetaRHatByP;
     attemptInfo.thetaKeepChains = thetaKeep;
@@ -169,7 +184,7 @@ end
 
 function [stats, chains, diagnostics, info, rMax, keepChains, rHatByParam, nThin] = ...
     fitHierarchicalExecutionOnce(engine, modelName, monitorParams, data, initGenerator, ...
-    nThin, nBurnin, opts, figuresDir)
+    nThin, nBurnin, opts, figuresDir, rhatParticipants)
 
 tic;
 modelPath = resolveJagsModelFile(fileparts(mfilename('fullpath')), ...
@@ -196,7 +211,7 @@ modelPath = resolveJagsModelFile(fileparts(mfilename('fullpath')), ...
 fprintf('%s took %.1f s (thin=%d, burn-in=%g)\n', upper(engine), toc, nThin, nBurnin);
 
 [rMax, keepChains, rHatByParam] = maxRhatOverMonitoredParams( ...
-  chains, monitorParams, opts.keepChainsMin, opts.rhatCritical);
+  chains, monitorParams, opts.keepChainsMin, opts.rhatCritical, rhatParticipants);
 fprintf('R-hat max=%.3f over {%s}; keep %d / %d chains\n', ...
   rMax, strjoin(fieldnames(rHatByParam), ', '), numel(keepChains), opts.nChains);
 
@@ -206,6 +221,19 @@ if opts.plotFailedRuns
     'savePath', hierarchicalFigurePath(figuresDir, modelName, sprintf('thin%d', nThin), opts.saveFigures));
 end
 
+end
+
+function indices = normalizeParticipantIndices(indices, nParticipants)
+if isempty(indices)
+  indices = [];
+  return;
+end
+indices = unique(double(indices(:)'), 'stable');
+if any(~isfinite(indices)) || any(indices ~= round(indices)) || ...
+    any(indices < 1) || any(indices > nParticipants)
+  error('runHierarchicalExecutionModel:badRhatParticipants', ...
+    'rhatParticipants must contain integer indices from 1 to %d.', nParticipants);
+end
 end
 
 function showFinalHierarchicalFigures(chains, monitorParams, data, d, modelName, figuresDir, saveFigures)

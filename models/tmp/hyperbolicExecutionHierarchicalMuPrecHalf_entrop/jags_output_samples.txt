@@ -1,0 +1,204 @@
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_12.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_12.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_7.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_7.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_8.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_8.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_3.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_3.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_5.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_5.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_11.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_11.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_1.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_1.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_4.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_4.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_6.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_6.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_10.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_10.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_2.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_2.seed
+Initializing model
+Updating 2000
+Updating 40000
+Welcome to JAGS 4.3.2 on Fri Jul 17 12:36:58 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 54
+   Total graph size: 32740
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_9.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbolicExecutionHierarchicalMuPrecHalf_entrop/hyperbolicExecutionHierarchicalMuPrecHalf_entrop_9.seed
+Initializing model
+Updating 2000
+Updating 40000

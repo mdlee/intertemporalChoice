@@ -1,4 +1,5 @@
-function [rMax, keepChains, rHatEach] = maxRhatOverParticipants(coda, minChains, desiredRhat, paramName)
+function [rMax, keepChains, rHatEach] = maxRhatOverParticipants( ...
+  coda, minChains, desiredRhat, paramName, participantIndices)
 %MAXRHATOVERPARTICIPANTS  Worst Gelman-Rubin R-hat over an indexed CODA parameter.
 %
 %   RMAX = MAXRHATOVERPARTICIPANTS(CODA) — worst R-hat across z_1, z_2, ...
@@ -7,8 +8,14 @@ function [rMax, keepChains, rHatEach] = maxRhatOverParticipants(coda, minChains,
 %   RHATEACH is a vector of per-index R-hats. If all chains share the same value
 %   (common for discrete z), R-hat is treated as 1 instead of Inf.
 %
+%   PARTICIPANTINDICES optionally restricts the convergence gate to selected
+%   indexed elements while still returning RHATEACH for every participant.
+%
 %   See also: CODAINDEXEDMATRICES, FINDKEEPCHAINS, GELMANRUBIN
 
+if nargin < 5
+  participantIndices = [];
+end
 if nargin < 4 || isempty(paramName)
   paramName = 'z';
 end
@@ -21,11 +28,22 @@ end
 
 matrices = codaIndexedMatrices(coda, paramName);
 nElem = numel(matrices);
+if isempty(participantIndices)
+  participantIndices = 1:nElem;
+else
+  participantIndices = unique(double(participantIndices(:)'), 'stable');
+  if any(~isfinite(participantIndices)) || any(participantIndices ~= round(participantIndices)) || ...
+      any(participantIndices < 1) || any(participantIndices > nElem)
+    error('maxRhatOverParticipants:badIndices', ...
+      'participantIndices must contain valid indices from 1 to %d.', nElem);
+  end
+end
 rHatEach = nan(nElem, 1);
 rMax = -inf;
 keepChains = [];
+firstSelected = true;
 
-for k = 1:nElem
+for k = participantIndices
   x = matrices{k};
   rHatEach(k) = gelmanRubinSafe(x);
   rMax = max(rMax, rHatEach(k));
@@ -39,15 +57,16 @@ for k = 1:nElem
     end
   end
 
-  if k == 1
+  if firstSelected
     keepChains = kc;
+    firstSelected = false;
   else
     keepChains = intersect(keepChains, kc, 'stable');
   end
 end
 
-if isempty(keepChains) && nElem > 0
-  keepChains = 1:size(matrices{1}, 2);
+if isempty(keepChains) && ~isempty(participantIndices)
+  keepChains = 1:size(matrices{participantIndices(1)}, 2);
 end
 
 end

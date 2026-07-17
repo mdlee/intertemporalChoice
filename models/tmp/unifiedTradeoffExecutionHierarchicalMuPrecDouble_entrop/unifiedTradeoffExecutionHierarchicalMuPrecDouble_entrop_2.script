@@ -1,0 +1,15 @@
+model in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop_jags.jags"
+data in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop.data"
+compile, nchains(1)
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop_2.init"
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop/unifiedTradeoffExecutionHierarchicalMuPrecDouble_entrop_2.seed"
+initialize
+update 2000
+monitor set gamma, thin(32)
+monitor set tau, thin(32)
+monitor set kappa, thin(32)
+monitor set vartheta, thin(32)
+monitor set eta, thin(32)
+monitor set w, thin(32)
+update 160000
+coda *, stem('samples_2_')

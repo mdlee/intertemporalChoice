@@ -6,14 +6,16 @@
 %
 % Output folders under results/:
 %   basic/                experimentalDesign, dataCounts
-%   latentMixture/        latentMixturePosteriors{,Half,Double}
-%                         (latentMixturePriorRobustness: console only, no figure)
+%   latentMixture/        latentMixturePosteriors{,Half,Double},
+%                         latentMixturePriorRobustness
 %   descriptiveAdequacy/  mapModelPosteriorPredictive, mapModelForcedChoiceMatch
-%   parameterEstimation/  parameterEstimation, mapModelParameterRobustness
+%   parameterInferences/  parameterInferences, mapModelParameterRobustness
 %
 % mapModelPosteriorPredictive caches a cutdown summary under models/storage/
 % (mapModelPosteriorPredictive_summary_*.mat). Set regenerateMapPostPredSummaries
-% true in that case to rebuild from full chain mats after refits.
+% inside that case to rebuild. mapModelParameterRobustness and
+% mapModelForcedChoiceMatch need half/double cognitive fits from
+% models/runHierarchicalExecutionPriorRobustness.m.
 %
 % Run from results/:
 %   drawFiguresEntrop
@@ -32,8 +34,8 @@ analysisList = {...
   %'latentMixturePriorRobustness', ...
   %'mapModelPosteriorPredictive', ...
   %'mapModelForcedChoiceMatch', ...
-  %'mapModelParameterRobustness', ...
-  'parameterEstimation', ...
+  'mapModelParameterRobustness', ...
+  %'parameterInferences', ...
   };
 
 % ---- paths / data ----
@@ -57,12 +59,12 @@ outputSubdirByAnalysis = containers.Map( ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
    'latentMixturePosteriorsDouble', 'latentMixturePriorRobustness', ...
    'mapModelPosteriorPredictive', 'mapModelForcedChoiceMatch', ...
-   'mapModelParameterRobustness', 'parameterEstimation'}, ...
+   'mapModelParameterRobustness', 'parameterInferences'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
    'latentMixture', 'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
-   'parameterEstimation', 'parameterEstimation'});
+   'parameterInferences', 'parameterInferences'});
 
 [data, d] = prepareIntertemporalChoiceData(dataName);
 nP = double(d.nParticipants);
@@ -611,8 +613,9 @@ for analysisIdx = 1:numel(analysisList)
 
     %% ================================================================
     case 'latentMixturePriorRobustness'
-      % Console report only: MAP stability under half / double priors.
-      % (No figure — prior robustness is summarized in text.)
+      % Console MAP stability under half / double priors, plus scatter of
+      % posterior model probability (orig vs half / orig vs double) for all
+      % model families (cognitive + contaminant), with Tr and UT combined.
 
       mixStems = { ...
         mixtureName, ...
@@ -698,7 +701,133 @@ for analysisIdx = 1:numel(analysisList)
         fprintf('\n');
       end
       fprintf('\n');
-      saveFigure = false;
+
+      % Combined Tr+UT into one family; scatter P_orig vs P_half/double for
+      % every family (all cognitive + contaminant), every participant.
+      % Label points farther than dCritical from the diagonal with
+      % MAP_orig->MAP_alt (combined-family two-letter codes).
+      PfamOrig = combinedFamilyPosteriors(Porig);
+      PfamHalf = combinedFamilyPosteriors(Phalf);
+      PfamDouble = combinedFamilyPosteriors(Pdouble);
+      nFam = size(PfamOrig, 1);
+      familyShort = {'Ex', 'Hc', 'Hd', 'PD', 'DD', 'Tr', 'IT', 'Gu', 'LL', 'SS'};
+      [~, mapFamOrig] = max(PfamOrig, [], 1);
+      [~, mapFamHalf] = max(PfamHalf, [], 1);
+      [~, mapFamDouble] = max(PfamDouble, [], 1);
+      mapFamAlt = {mapFamHalf, mapFamDouble};
+      fprintf('Scatter: %d participants × %d families (Tr+UT combined) = %d points per panel\n\n', ...
+        nP, nFam, nP * nFam);
+
+      fontSize = 14;
+      labelFontSize = 16;
+      titleFontSize = 14;
+      pointLabelFontSize = 8;
+      figPos = [0.15 0.25 0.7 0.45];
+      markerSize = 36;
+      markerFace = [0.45 0.55 0.75];
+      markerEdge = 0.25 * [1 1 1];
+      identityClr = 0.55 * [1 1 1];
+      identityLineWidth = 1.0;
+      tickLength = 0.02;
+      raxesXShift = 0.01;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 0.9 0.9];
+      moveAxisShift = [0 0.025 0 0];
+      xLabelStr = 'Original prior';
+      yLabelHalf = 'Half prior';
+      yLabelDouble = 'Double prior';
+      showPanelTitles = true;
+      panelTitleHalf = 'Half';
+      panelTitleDouble = 'Double';
+      dCritical = 0.3; % |P_orig - P_alt| threshold for labeling off-diagonal points
+      pointLabelOffset = 0.02;
+
+      altP = {PfamHalf, PfamDouble};
+      yLabs = {yLabelHalf, yLabelDouble};
+      panTitles = {panelTitleHalf, panelTitleDouble};
+
+      F = figure; clf;
+      setFigure(F, figPos, '');
+      set(F, 'Color', 'w', 'renderer', 'painters');
+
+      for pan = 1:2
+        ax = subplot(1, 2, pan);
+        hold(ax, 'on');
+        plot(ax, [0 1], [0 1], '-', 'Color', identityClr, 'LineWidth', identityLineWidth);
+
+        for fam = 1:nFam
+          for pp = 1:nP
+            xo = PfamOrig(fam, pp);
+            ya = altP{pan}(fam, pp);
+            if ~(isfinite(xo) && isfinite(ya))
+              continue;
+            end
+            scatter(ax, xo, ya, markerSize, ...
+              'MarkerFaceColor', markerFace, ...
+              'MarkerEdgeColor', markerEdge, ...
+              'LineWidth', 0.6);
+          end
+        end
+
+        % One label per participant at the farthest-from-diagonal family point
+        for pp = 1:nP
+          dFam = abs(PfamOrig(:, pp) - altP{pan}(:, pp));
+          [dMax, famStar] = max(dFam);
+          if ~(isfinite(dMax) && dMax > dCritical)
+            continue;
+          end
+          xo = PfamOrig(famStar, pp);
+          ya = altP{pan}(famStar, pp);
+          lbl = sprintf('%s->%s', ...
+            lower(familyShort{mapFamOrig(pp)}), ...
+            lower(familyShort{mapFamAlt{pan}(pp)}));
+          if ya >= xo
+            tx = xo - pointLabelOffset;
+            ty = ya + pointLabelOffset;
+            hAlign = 'right';
+            vAlign = 'bottom';
+          else
+            tx = xo + pointLabelOffset;
+            ty = ya - pointLabelOffset;
+            hAlign = 'left';
+            vAlign = 'top';
+          end
+          text(ax, tx, ty, lbl, ...
+            'FontSize', pointLabelFontSize, ...
+            'FontWeight', 'normal', ...
+            'HorizontalAlignment', hAlign, ...
+            'VerticalAlignment', vAlign, ...
+            'Clipping', 'off', ...
+            'Interpreter', 'none');
+        end
+
+        xlim(ax, [0 1]);
+        ylim(ax, [0 1]);
+        axis(ax, 'square');
+        set(ax, ...
+          'TickDir', 'out', ...
+          'Box', 'off', ...
+          'FontSize', fontSize, ...
+          'XTick', 0:0.25:1, ...
+          'YTick', 0:0.25:1, ...
+          'TickLength', [tickLength 0], ...
+          'clipping', 'off');
+        xlabel(ax, xLabelStr, 'FontSize', labelFontSize);
+        ylabel(ax, yLabs{pan}, 'FontSize', labelFontSize);
+        if showPanelTitles
+          title(ax, panTitles{pan}, 'FontSize', titleFontSize, 'FontWeight', 'normal');
+        end
+        moveAxis(gca, moveAxisScale, moveAxisShift);
+        [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+        set([axX axY], 'Tag', 'RaxesCopy');
+        title(axX, '');
+        title(axY, '');
+        if showPanelTitles
+          title(ax, panTitles{pan}, 'FontSize', titleFontSize, 'FontWeight', 'normal');
+        end
+      end
+
+      saveFigure = true;
 
     %% ================================================================
     case 'mapModelPosteriorPredictive'
@@ -1000,7 +1129,10 @@ for analysisIdx = 1:numel(analysisList)
 
     %% ================================================================
     case 'mapModelForcedChoiceMatch'
-      % Forced-choice agreement under original / half / double MAP assignments.
+      % Forced-choice agreement for each participant's original-MAP model,
+      % comparing that same model's fits under original / half / double mu
+      % priors (ignores MAP changes under half/double). Cognitive half/double
+      % fits: runHierarchicalExecutionPriorRobustness.
       % Console report + two-panel scatter (original vs half / original vs double).
 
       % graphics / analysis constants
@@ -1008,41 +1140,51 @@ for analysisIdx = 1:numel(analysisList)
       % Cutdown summary of match rates (full chain mats kept).
       regenerateMapForcedChoiceSummaries = false;
 
-      mixPack = { ...
-        mixtureName, 'Original'; ...
-        'latentMixtureHierarchicalMuPrecHalf_entrop', 'Half'; ...
-        'latentMixtureHierarchicalMuPrecDouble_entrop', 'Double'};
-      nMix = size(mixPack, 1);
-      matchByMix = cell(nMix, 1);
-      mapModelByMix = cell(nMix, 1);
-      mapProbByMix = cell(nMix, 1);
-      overallByMix = nan(1, nMix);
+      mixPathOrig = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      if ~isfile(mixPathOrig)
+        error('Missing mixture chains: %s', mixPathOrig);
+      end
 
-      for kMix = 1:nMix
-        mixStem = mixPack{kMix, 1};
-        mixLabel = mixPack{kMix, 2};
-        mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixStem, dataName, engine));
-        if ~isfile(mixPath)
-          error('Missing mixture chains (%s): %s', mixLabel, mixPath);
-        end
+      % Stem lists for hierarchical fits under each prior setting
+      cognitiveStemsHalf = cellfun(@(s) cognitiveMuPrecStem(s, 'Half'), ...
+        cognitiveStems, 'UniformOutput', false);
+      cognitiveStemsDouble = cellfun(@(s) cognitiveMuPrecStem(s, 'Double'), ...
+        cognitiveStems, 'UniformOutput', false);
+
+      priorPack = { ...
+        'Original', 'origMAP_original', cognitiveStems; ...
+        'Half',     'origMAP_half',     cognitiveStemsHalf; ...
+        'Double',   'origMAP_double',   cognitiveStemsDouble};
+      nPrior = size(priorPack, 1);
+      matchByMix = cell(nPrior, 1);
+      mapModelByMix = cell(nPrior, 1);
+      mapProbByMix = cell(nPrior, 1);
+      overallByMix = nan(1, nPrior);
+
+      for kPrior = 1:nPrior
+        priorLabel = priorPack{kPrior, 1};
+        fitTag = priorPack{kPrior, 2};
+        cogStems = priorPack{kPrior, 3};
         summaryPath = fullfile(storageDir, ...
           sprintf('mapModelForcedChoiceMatch_summary_%s_%s_%s.mat', ...
-            mixStem, dataName, engine));
+            fitTag, dataName, engine));
 
         [mapModelK, mapProbK, matchPropK, ~, rebuilt] = ...
           loadOrBuildMapForcedChoiceMatchSummary( ...
             summaryPath, regenerateMapForcedChoiceSummaries, ...
-            mixPath, storageDir, dataName, engine, ...
-            mixStem, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
+            mixPathOrig, storageDir, dataName, engine, ...
+            fitTag, cogStems, contaminantStems, cognitiveJagsNames, modelLong, ...
             data, d, nP, nT, nModels, choiceThreshold);
         if rebuilt
-          fprintf('Wrote forced-choice match summary (%s) %s\n', mixLabel, summaryPath);
+          fprintf('Wrote forced-choice match summary (%s) %s\n', priorLabel, summaryPath);
         else
-          fprintf('Loaded forced-choice match summary (%s) %s\n', mixLabel, summaryPath);
+          fprintf('Loaded forced-choice match summary (%s) %s\n', priorLabel, summaryPath);
         end
 
         fprintf('\nMAP forced-choice match — %s priors (theta > %.2f => LL, < => SS):\n', ...
-          mixLabel, choiceThreshold);
+          priorLabel, choiceThreshold);
+        fprintf('  (MAP identity from original mixture; params from %s hierarchical fits)\n', ...
+          lower(priorLabel));
         for pp = 1:nP
           mi = mapModelK(pp);
           if isfinite(mi) && mi >= 1 && mi <= nModels && isfinite(matchPropK(pp))
@@ -1053,18 +1195,20 @@ for analysisIdx = 1:numel(analysisList)
           end
         end
         overallK = mean(matchPropK(isfinite(matchPropK)));
-        fprintf('  Overall mean match = %.3f\n', overallK);
+        nReady = sum(isfinite(matchPropK));
+        fprintf('  Overall mean match = %.3f (%d / %d participants with fits ready)\n', ...
+          overallK, nReady, nP);
 
-        matchByMix{kMix} = matchPropK;
-        mapModelByMix{kMix} = mapModelK;
-        mapProbByMix{kMix} = mapProbK;
-        overallByMix(kMix) = overallK;
+        matchByMix{kPrior} = matchPropK;
+        mapModelByMix{kPrior} = mapModelK;
+        mapProbByMix{kPrior} = mapProbK;
+        overallByMix(kPrior) = overallK;
       end
 
-      fprintf('\nForced-choice agreement summary across prior settings:\n');
-      for kMix = 1:nMix
+      fprintf('\nForced-choice agreement summary (same original-MAP model across priors):\n');
+      for kPrior = 1:nPrior
         fprintf('  %-8s overall mean match = %.3f\n', ...
-          [mixPack{kMix, 2} ':'], overallByMix(kMix));
+          [priorPack{kPrior, 1} ':'], overallByMix(kPrior));
       end
       fprintf('\n');
 
@@ -1151,8 +1295,9 @@ for analysisIdx = 1:numel(analysisList)
       % For each parameter of each model that is MAP for someone under the
       % original prior: two-panel scatter of participant posterior means
       % (original vs half / original vs double), only those MAP participants.
-      % Prefers mixture-chain participant params (e.g. gammaTR); if mixtures
-      % only stored z, falls back to individual hierarchical fits.
+      % Always uses that original-MAP model for all three prior settings
+      % (ignores MAP changes under half/double). Cognitive half/double fits
+      % come from runHierarchicalExecutionPriorRobustness.
 
       fontSize = 9;
       labelFontSize = 9;
@@ -1199,28 +1344,16 @@ for analysisIdx = 1:numel(analysisList)
         {{'alpha', 'alpha', 'alphaSS'}} ... % SS
         };
 
-      mixStems = { ...
-        mixtureName, ...
-        'latentMixtureHierarchicalMuPrecHalf_entrop', ...
-        'latentMixtureHierarchicalMuPrecDouble_entrop'};
-      mixLabels = {'original', 'half', 'double'};
-      mixChains = cell(1, 3);
-      mapModels = cell(1, 3);
-      for k = 1:3
-        mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixStems{k}, dataName, engine));
-        if ~isfile(mixPath)
-          error('Missing mixture chains (%s): %s', mixLabels{k}, mixPath);
-        end
-        fprintf('Loading mixture %s\n', mixPath);
-        mixS = load(mixPath, 'chains');
-        mixChains{k} = mixS.chains;
-        P = posteriorModelProbsFromZ(mixS.chains, nP, nModels);
-        [~, mapModels{k}] = max(P, [], 1);
-        clear mixS P;
+      % MAP model under original mixture priors only
+      mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      if ~isfile(mixPath)
+        error('Missing mixture chains: %s', mixPath);
       end
-      mapOrig = mapModels{1};
-      mapHalf = mapModels{2};
-      mapDouble = mapModels{3};
+      fprintf('Loading mixture %s\n', mixPath);
+      mixS = load(mixPath, 'chains');
+      P = posteriorModelProbsFromZ(mixS.chains, nP, nModels);
+      [~, mapOrig] = max(P, [], 1);
+      clear mixS P;
 
       uniqueMaps = unique(mapOrig(isfinite(mapOrig)));
       uniqueMaps = uniqueMaps(uniqueMaps >= 1 & uniqueMaps <= nModels);
@@ -1229,44 +1362,47 @@ for analysisIdx = 1:numel(analysisList)
       end
       fprintf('Original MAP models: %s\n', strjoin(lower(modelShort(uniqueMaps)), ', '));
 
-      % Probe whether mixture chains contain participant parameters
-      useMixtureParams = false;
+      % Load original / half / double hierarchical fits for each needed MAP model.
+      % Half/double cognitive fits: runHierarchicalExecutionPriorRobustness.
+      % Skip models whose half/double fits are not on disk yet (incremental runs).
+      chainsOrig = cell(nModels, 1);
+      chainsHalf = cell(nModels, 1);
+      chainsDouble = cell(nModels, 1);
       for mi = uniqueMaps(:)'
         specs = modelParamSpecs{mi};
         if isempty(specs)
           continue;
         end
-        mixField = specs{1}{3};
-        if mixtureHasIndexedParam(mixChains{1}, mixField)
-          useMixtureParams = true;
-          break;
+        if mi > 8
+          fprintf('Skipping contaminant MAP model %s (no mu_* prior-robustness fits)\n', ...
+            modelShort{mi});
+          continue;
         end
-      end
-      if useMixtureParams
-        fprintf('Using participant parameters from mixture chains.\n');
-        indivChains = {}; %#ok<NASGU>
-      else
-        fprintf(['Mixture chains appear to contain only z; falling back to ' ...
-          'individual hierarchical model fits.\n']);
-        fprintf(['  (Points use the original-MAP model fit on x and the ' ...
-          'half/double-MAP model fit on y when that model has the same parameter.)\n']);
-        needModels = unique([mapOrig(:); mapHalf(:); mapDouble(:)]);
-        needModels = needModels(isfinite(needModels) & needModels >= 1 & needModels <= nModels);
-        indivChains = cell(nModels, 1);
-        for mi = needModels(:)'
-          if mi <= 8
-            stem = cognitiveStems{mi};
-          else
-            stem = contaminantStems{mi - 8};
-          end
-          fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
-          if ~isfile(fpath)
-            warning('Missing individual fit for model %s (%s)', modelLong{mi}, fpath);
-            continue;
-          end
-          fprintf('Loading %s\n', fpath);
-          L = load(fpath, 'chains');
-          indivChains{mi} = L.chains;
+        stemOrig = cognitiveStems{mi};
+        stemHalf = cognitiveMuPrecStem(stemOrig, 'Half');
+        stemDouble = cognitiveMuPrecStem(stemOrig, 'Double');
+        hasHalf = hierarchicalStemAvailable(storageDir, stemHalf, dataName, engine);
+        hasDouble = hierarchicalStemAvailable(storageDir, stemDouble, dataName, engine);
+        if ~(hasHalf || hasDouble)
+          fprintf('Skipping %s — no half/double fit yet\n', modelShort{mi});
+          continue;
+        end
+        if ~hierarchicalStemAvailable(storageDir, stemOrig, dataName, engine)
+          fprintf('Skipping %s — missing original fit\n', modelShort{mi});
+          continue;
+        end
+        chainsOrig{mi} = loadHierarchicalChains(storageDir, stemOrig, dataName, engine);
+        if hasHalf
+          chainsHalf{mi} = loadHierarchicalChains(storageDir, stemHalf, dataName, engine);
+        else
+          fprintf('  %s: half fit not ready — half panel points will be omitted\n', ...
+            modelShort{mi});
+        end
+        if hasDouble
+          chainsDouble{mi} = loadHierarchicalChains(storageDir, stemDouble, dataName, engine);
+        else
+          fprintf('  %s: double fit not ready — double panel points will be omitted\n', ...
+            modelShort{mi});
         end
       end
 
@@ -1274,8 +1410,18 @@ for analysisIdx = 1:numel(analysisList)
       panelJobs = {};
       for mi = uniqueMaps(:)'
         specs = modelParamSpecs{mi};
-        if isempty(specs)
-          fprintf('Skipping model %s (no plotted parameters)\n', modelShort{mi});
+        if isempty(specs) || mi > 8
+          if isempty(specs)
+            fprintf('Skipping model %s (no plotted parameters)\n', modelShort{mi});
+          end
+          continue;
+        end
+        if isempty(chainsOrig{mi})
+          continue;
+        end
+        hasHalf = ~isempty(chainsHalf{mi});
+        hasDouble = ~isempty(chainsDouble{mi});
+        if ~(hasHalf || hasDouble)
           continue;
         end
         pps = find(mapOrig == mi);
@@ -1285,7 +1431,6 @@ for analysisIdx = 1:numel(analysisList)
         for s = 1:numel(specs)
           label = specs{s}{1};
           indivField = specs{s}{2};
-          mixField = specs{s}{3};
           muOrig = nan(1, nP);
           loOrig = nan(1, nP);
           hiOrig = nan(1, nP);
@@ -1297,20 +1442,15 @@ for analysisIdx = 1:numel(analysisList)
           hiDouble = nan(1, nP);
           for ii = 1:numel(pps)
             pp = pps(ii);
-            if useMixtureParams
-              [muOrig(pp), loOrig(pp), hiOrig(pp)] = indexedParamSummary( ...
-                mixChains{1}, mixField, pp, iqrProbs);
+            [muOrig(pp), loOrig(pp), hiOrig(pp)] = indexedParamSummary( ...
+              chainsOrig{mi}, indivField, pp, iqrProbs);
+            if hasHalf
               [muHalf(pp), loHalf(pp), hiHalf(pp)] = indexedParamSummary( ...
-                mixChains{2}, mixField, pp, iqrProbs);
+                chainsHalf{mi}, indivField, pp, iqrProbs);
+            end
+            if hasDouble
               [muDouble(pp), loDouble(pp), hiDouble(pp)] = indexedParamSummary( ...
-                mixChains{3}, mixField, pp, iqrProbs);
-            else
-              [muOrig(pp), loOrig(pp), hiOrig(pp)] = indexedParamSummary( ...
-                indivChains{mi}, indivField, pp, iqrProbs);
-              [muHalf(pp), loHalf(pp), hiHalf(pp)] = paramSummaryFromMapModel( ...
-                indivChains, mapHalf(pp), indivField, pp, modelParamSpecs, iqrProbs);
-              [muDouble(pp), loDouble(pp), hiDouble(pp)] = paramSummaryFromMapModel( ...
-                indivChains, mapDouble(pp), indivField, pp, modelParamSpecs, iqrProbs);
+                chainsDouble{mi}, indivField, pp, iqrProbs);
             end
           end
           panelJobs{end + 1} = struct( ... %#ok<AGROW>
@@ -1325,7 +1465,9 @@ for analysisIdx = 1:numel(analysisList)
 
       nJobs = numel(panelJobs);
       if nJobs == 0
-        error('No parameter panels to plot');
+        fprintf(['No parameter panels to plot yet (waiting on ' ...
+          'runHierarchicalExecutionPriorRobustness fits).\n']);
+        continue;
       end
       nFigCols = nHalfCols + nDoubleCols;
       nFigRows = ceil(nJobs / nHalfCols);
@@ -1443,7 +1585,7 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
-    case 'parameterEstimation'
+    case 'parameterInferences'
       % Per-participant MAP-model parameter means (+ 95% CI), adapted from
       % drawFigures_4 parameterInferences, with entropification w (not epsilon).
 
@@ -1781,6 +1923,10 @@ function [mapModel, mapProb, matchProp, meanThetaByParticipant, rebuilt] = ...
     mixtureName, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
     data, d, nP, nT, nModels, choiceThreshold)
 %LOADORBUILDMAPFORCEDCHOICEMATCHSUMMARY  Cache MAP forced-choice match rates.
+%
+%   MAP identity comes from mixPath. Hierarchical theta comes from
+%   cognitiveStems / contaminantStems (pass MuPrecHalf/Double stems for
+%   prior-robustness match rates).
 
 needBuild = forceRegen || ~isfile(summaryPath);
 
@@ -1801,6 +1947,20 @@ if ~needBuild
       curMt(k) = fileMtime(S.sourcePaths{k});
     end
     needBuild = any(~isfinite(curMt)) || ~isequal(curMt(:), S.sourceMtimes(:));
+  end
+  % Rebuild when a previously missing MAP-model fit has since appeared on disk
+  if ~needBuild && isfield(S, 'mapModel')
+    for mi = unique(S.mapModel(:))'
+      if ~(isfinite(mi) && mi >= 1 && mi <= 8)
+        continue;
+      end
+      fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', ...
+        cognitiveStems{mi}, dataName, engine));
+      if isfile(fpath) && ~any(strcmp(S.sourcePaths, fpath))
+        needBuild = true;
+        break;
+      end
+    end
   end
   if ~needBuild
     mapModel = S.mapModel;
@@ -1832,6 +1992,11 @@ for mi = uniqueMaps(:)'
   end
   fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
   if ~isfile(fpath)
+    if mi <= 8 && (contains(stem, 'MuPrecHalf') || contains(stem, 'MuPrecDouble'))
+      fprintf('Skipping MAP model %s — prior-robustness fit not ready:\n  %s\n', ...
+        modelLong{mi}, fpath);
+      continue;
+    end
     warning('Missing fit for MAP model %s (%s)', modelLong{mi}, fpath);
     continue;
   end
@@ -1849,8 +2014,14 @@ for pp = 1:nP
   if ~(isfinite(mi) && mi >= 1 && mi <= nModels) || isempty(chainsByModel{mi})
     continue;
   end
+  % Prefer stem actually loaded (may be MuPrec*) for theta mapping
+  if mi <= 8
+    jagsNames = cognitiveStems;
+  else
+    jagsNames = cognitiveJagsNames;
+  end
   meanTh = mapModelMeanTheta( ...
-    chainsByModel{mi}, data, cognitiveJagsNames, mi, pp, nT);
+    chainsByModel{mi}, data, jagsNames, mi, pp, nT);
   if isempty(meanTh) || numel(meanTh) ~= nT
     continue;
   end
@@ -1925,6 +2096,14 @@ function fam = mapModelToUseFamily(mapModel)
 %MAPMODELTOUSEFAMILY  Collapse tr/ut (indices 6/7) to one model-use family.
 fam = mapModel;
 fam(mapModel == 7) = 6; % unified tradeoff -> tradeoff family
+end
+
+function Pfam = combinedFamilyPosteriors(P)
+%COMBINEDFAMILYPOSTERIORS  Merge Tr+UT (indices 6+7) into one family mass.
+%
+%   P is nModels-by-nParticipants. Returns 10-by-nP:
+%   Ex, Hc, Hd, PD, DD, Tr+UT, IT, Gu, LL, SS.
+Pfam = [P(1:5, :); P(6, :) + P(7, :); P(8:11, :)];
 end
 
 function tf = mixtureHasIndexedParam(chains, paramName)
@@ -2057,4 +2236,29 @@ for p = 1:nPairs
     pmfPad(p, k + 1) = mean(col == k);
   end
 end
+end
+
+function stem = cognitiveMuPrecStem(baseStem, precLabel)
+% Insert MuPrecHalf / MuPrecDouble before _entrop.
+stem = regexprep(baseStem, '_entrop$', ['MuPrec' precLabel '_entrop']);
+if strcmp(stem, baseStem)
+  error('cognitiveMuPrecStem:badStem', ...
+    'Expected stem ending in _entrop, got: %s', baseStem);
+end
+end
+
+function tf = hierarchicalStemAvailable(storageDir, stem, dataName, engine)
+tf = isfile(fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine)));
+end
+
+function chains = loadHierarchicalChains(storageDir, stem, dataName, engine)
+fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+if ~isfile(fpath)
+  error(['Missing hierarchical fit %s\n' ...
+    'Run models/runHierarchicalExecutionPriorRobustness.m for half/double fits.'], ...
+    fpath);
+end
+fprintf('Loading %s\n', fpath);
+L = load(fpath, 'chains');
+chains = L.chains;
 end

@@ -1,0 +1,11 @@
+model in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/exponentialExecutionHierarchicalMuPrecDouble_entrop/exponentialExecutionHierarchicalMuPrecDouble_entrop_jags.jags"
+data in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/exponentialExecutionHierarchicalMuPrecDouble_entrop/exponentialExecutionHierarchicalMuPrecDouble_entrop.data"
+compile, nchains(1)
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/exponentialExecutionHierarchicalMuPrecDouble_entrop/exponentialExecutionHierarchicalMuPrecDouble_entrop_9.init"
+parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/exponentialExecutionHierarchicalMuPrecDouble_entrop/exponentialExecutionHierarchicalMuPrecDouble_entrop_9.seed"
+initialize
+update 2000
+monitor set kappa, thin(1)
+monitor set w, thin(1)
+update 5000
+coda *, stem('samples_9_')
