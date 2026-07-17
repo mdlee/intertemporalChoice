@@ -1,13 +1,19 @@
 function path = resolveJagsModelFile(modelsDir, modelFileName)
-%RESOLVEJAGSMODELFILE  Find a *_jags.txt in modelsDir or modelsDir/old.
+%RESOLVEJAGSMODELFILE  Find a *_jags.txt under models/.
 %
 %   PATH = RESOLVEJAGSMODELFILE(MODELSDIR, 'foo_jags.txt')
-%   Prefers MODELSDIR, then MODELSDIR/old (archived non-entrop baselines).
+%   Search order:
+%     modelsDir/jags/       — main models (original priors)
+%     modelsDir/jagsRobust/ — half/double prior robustness variants
+%     modelsDir/            — legacy flat layout
+%     modelsDir/old/        — archived baselines
 
 if nargin < 2 || isempty(modelFileName)
   error('resolveJagsModelFile:badInput', 'Expected model file name.');
 end
 candidates = { ...
+  fullfile(modelsDir, 'jags', modelFileName), ...
+  fullfile(modelsDir, 'jagsRobust', modelFileName), ...
   fullfile(modelsDir, modelFileName), ...
   fullfile(modelsDir, 'old', modelFileName)};
 for k = 1:numel(candidates)
@@ -17,5 +23,6 @@ for k = 1:numel(candidates)
   end
 end
 error('resolveJagsModelFile:notFound', ...
-  'JAGS model not found in %s or %s/old: %s', modelsDir, modelsDir, modelFileName);
+  'JAGS model not found for %s (searched jags/, jagsRobust/, ., old/ under %s)', ...
+  modelFileName, modelsDir);
 end

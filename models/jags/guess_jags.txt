@@ -1,0 +1,11 @@
+# GUESS MODEL
+model{
+  for (i in 1:nParticipants){
+    for (j in 1:nTrials){
+      # probability of choosing larger later
+      theta[i, j] = 0.5
+      # decision
+      decision[i, j] ~ dbern(theta[i, j]) 
+    }    
+  }
+}

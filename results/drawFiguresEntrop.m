@@ -121,7 +121,7 @@ cognitiveStems = { ...
   'unifiedTradeoffExecutionHierarchical_entrop', ...
   'itchExecutionHierarchical_entrop'};
 cognitiveJagsNames = cognitiveStems;
-contaminantStems = {'guess_1', 'LL_1', 'SS_1'};
+contaminantStems = {'guess', 'LL', 'SS'};
 
 nTpMat = zeros(nP, nPairs);
 obsCntMat = nan(nP, nPairs);
