@@ -1,7 +1,10 @@
-# Large MCMC outputs
+# Large MCMC outputs / runtime scratch
 models/storage/
 models/mnCIsave/
 models/tmp/
+**/tmp/
+*_mcmcState.mat
+*_thinState.mat
 
 # Local literature PDFs
 literature/
