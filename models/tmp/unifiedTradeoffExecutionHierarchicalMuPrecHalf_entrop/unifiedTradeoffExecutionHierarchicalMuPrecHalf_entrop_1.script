@@ -4,12 +4,12 @@ compile, nchains(1)
 parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_1.init"
 parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_1.seed"
 initialize
-update 2000
-monitor set gamma, thin(64)
-monitor set tau, thin(64)
-monitor set kappa, thin(64)
-monitor set vartheta, thin(64)
-monitor set eta, thin(64)
-monitor set w, thin(64)
-update 320000
+update 1000
+monitor set gamma, thin(8)
+monitor set tau, thin(8)
+monitor set kappa, thin(8)
+monitor set vartheta, thin(8)
+monitor set eta, thin(8)
+monitor set w, thin(8)
+update 16000
 coda *, stem('samples_1_')

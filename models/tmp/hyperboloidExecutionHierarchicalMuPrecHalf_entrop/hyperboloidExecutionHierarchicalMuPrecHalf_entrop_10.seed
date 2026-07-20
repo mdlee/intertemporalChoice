@@ -1,5 +1,5 @@
 ".RNG.name" <- "base::Mersenne-Twister"
 ".RNG.seed" <-
-7241
+1669
 
-# This file was written for JAGS by STR2DATA on 17-Jul-2026 16:12:24.
+# This file was written for JAGS by STR2DATA on 19-Jul-2026 08:10:43.

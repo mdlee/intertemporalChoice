@@ -15,6 +15,10 @@ models/stan/
 models/old/
 models/tables/
 
+# Runtime / MCMC logs
+*.log
+models/logs/
+
 # OS / editor junk
 .DS_Store
 Thumbs.db

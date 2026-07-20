@@ -1,38 +1,4 @@
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_4.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_4.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_12.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_12.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -47,9 +13,9 @@ Graph information:
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_10.init
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_10.seed
 Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -61,12 +27,12 @@ Graph information:
    Observed stochastic nodes: 6000
    Unobserved stochastic nodes: 162
    Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_8.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_8.seed
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_4.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_4.seed
 Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -78,80 +44,12 @@ Graph information:
    Observed stochastic nodes: 6000
    Unobserved stochastic nodes: 162
    Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_5.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_5.seed
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_12.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_12.seed
 Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_9.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_9.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_2.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_2.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_7.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_7.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
-JAGS is free software and comes with ABSOLUTELY NO WARRANTY
-Loading module: basemod: ok
-Loading module: bugs: ok
-Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
-Compiling model graph
-   Resolving undeclared variables
-   Allocating nodes
-Graph information:
-   Observed stochastic nodes: 6000
-   Unobserved stochastic nodes: 162
-   Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_3.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_3.seed
-Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -166,9 +64,9 @@ Graph information:
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_1.init
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_1.seed
 Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -180,12 +78,63 @@ Graph information:
    Observed stochastic nodes: 6000
    Unobserved stochastic nodes: 162
    Total graph size: 38549
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_6.init
-Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_6.seed
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_5.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_5.seed
 Initializing model
-Updating 2000
-Updating 160000
-Welcome to JAGS 4.3.2 on Fri Jul 17 15:42:34 2026
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_7.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_7.seed
+Initializing model
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_9.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_9.seed
+Initializing model
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_3.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_3.seed
+Initializing model
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
 JAGS is free software and comes with ABSOLUTELY NO WARRANTY
 Loading module: basemod: ok
 Loading module: bugs: ok
@@ -200,5 +149,56 @@ Graph information:
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_11.init
 Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_11.seed
 Initializing model
-Updating 2000
-Updating 160000
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_2.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_2.seed
+Initializing model
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_8.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_8.seed
+Initializing model
+Updating 1000
+Updating 16000
+Welcome to JAGS 4.3.2 on Mon Jul 20 16:20:08 2026
+JAGS is free software and comes with ABSOLUTELY NO WARRANTY
+Loading module: basemod: ok
+Loading module: bugs: ok
+Reading data file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop.data
+Compiling model graph
+   Resolving undeclared variables
+   Allocating nodes
+Graph information:
+   Observed stochastic nodes: 6000
+   Unobserved stochastic nodes: 162
+   Total graph size: 38549
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_6.init
+Reading parameter file /home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop/unifiedTradeoffExecutionHierarchicalMuPrecHalf_entrop_6.seed
+Initializing model
+Updating 1000
+Updating 16000

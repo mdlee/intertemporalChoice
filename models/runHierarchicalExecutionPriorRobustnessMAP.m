@@ -4,33 +4,38 @@
 % All participants remain in every hierarchical fit, but convergence is
 % assessed only for participants whose original-prior MAP is that model.
 %
-% Companion to runHierarchicalExecutionPriorRobustness.m for a second
-% machine on the same Dropbox folder. Designed not to clash:
-%   - Only MAP models (exponential already done → omitted here)
-%   - Skips if storage/*.mat already exists
-%   - Skips if *_mcmcState.mat exists (fit in progress elsewhere)
-%   - Does not rewrite jagsRobust/*.txt if the file already exists
+% Draft-first schedule (for incremental mapModelParameterRobustness figures):
+%   - Start at thin=1 with short MCMC (1e3 burn-in, 2e3 samples)
+%   - After every attempt, save storage/*.mat if better (lower) R-hat than
+%     any existing draft — even when not yet converged
+%   - If a job does not converge, move on to the next incomplete job
+%   - After one pass over incomplete jobs, double thin and repeat
+%   - Stop when every job meets R-hat <= rhatCritical with enough chains
 %
 %   runHierarchicalExecutionPriorRobustnessMAP
 
 clear; close all;
 
 modelsDir = fileparts(mfilename('fullpath'));
+resultsDir = fullfile(modelsDir, '..', 'results');
 jagsRobustDir = fullfile(modelsDir, 'jagsRobust');
 storageDir = fullfile(modelsDir, 'storage');
 if ~isfolder(jagsRobustDir), mkdir(jagsRobustDir); end
 addpath(modelsDir);
+addpath(resultsDir);
 
 dataName = 'intertemporalChoice';
 engine = 'jags';
 rhatCritical = 1.2;
 keepChainsMin = 8;
+nBurnin = 1e3;
+nSamples = 2e3;
+nThin = 1;
 
-% Original-mixture MAP cognitive models only (Ex already fitted elsewhere).
-% Contaminants Gu/LL/SS have no mu_* hierarchical priors.
+% Original-mixture MAP cognitive models (contaminants have no mu_* priors).
 modelSpecs = {
-  % 'exponentialExecutionHierarchical_entrop', ...
-  %   {'kappa', 'w'}, 1;
+  'exponentialExecutionHierarchical_entrop', ...
+    {'kappa', 'w'}, 1;
   'unifiedTradeoffExecutionHierarchical_entrop', ...
     {'gamma', 'tau', 'kappa', 'vartheta', 'eta', 'w'}, 7;
   'itchExecutionHierarchical_entrop', ...
@@ -53,76 +58,180 @@ mixS = load(mixturePath, 'chains');
 mapModel = originalMapModels(mixS.chains, double(d.nParticipants), 11);
 clear mixS;
 
-nRuns = size(modelSpecs, 1) * size(precVariants, 1);
-fprintf('=== MAP-only cognitive prior robustness: %d candidate fits ===\n', nRuns);
-fprintf('  models: %s\n', strjoin(modelSpecs(:, 1), ', '));
-fprintf('  skip if storage or mcmcState already present (Dropbox-safe)\n');
-for m = 1:size(modelSpecs, 1)
-  pp = find(mapModel == modelSpecs{m, 3});
-  fprintf('  %s convergence participants: [%s] (%d)\n', ...
-    modelSpecs{m, 1}, sprintf('%d ', pp), numel(pp));
+% Build job list: one entry per (MAP model × half/double) with ≥1 MAP participant.
+jobs = buildMapJobs(modelSpecs, precVariants, mapModel, modelsDir, jagsRobustDir, ...
+  storageDir, dataName, engine);
+nJobs = numel(jobs);
+if nJobs == 0
+  error('No MAP cognitive jobs to run.');
 end
 
-runIdx = 0;
-nSkipped = 0;
-nFitted = 0;
+fprintf('=== MAP prior-robustness draft loop: %d jobs ===\n', nJobs);
+fprintf('  burn-in=%g | samples=%g | start thin=%d | R-hat<=%.3g | keepChains>=%d\n', ...
+  nBurnin, nSamples, nThin, rhatCritical, keepChainsMin);
+fprintf('  save every attempt if R-hat improves; advance thin after each full pass\n');
+for j = 1:nJobs
+  fprintf('  [%d] %s | MAP participants [%s] (%d)\n', ...
+    j, jobs(j).modelName, sprintf('%d ', jobs(j).rhatParticipants), ...
+    numel(jobs(j).rhatParticipants));
+end
+
+done = false(1, nJobs);
+for j = 1:nJobs
+  [rMax, keepChains] = storedFitRhat(jobs(j), keepChainsMin, rhatCritical);
+  if isfinite(rMax) && rMax <= rhatCritical && numel(keepChains) >= keepChainsMin
+    done(j) = true;
+    fprintf('  already converged: %s (R-hat max=%.3f)\n', jobs(j).modelName, rMax);
+  end
+end
+
+pass = 0;
+while ~all(done)
+  pass = pass + 1;
+  incomplete = find(~done);
+  fprintf('\n======== pass %d | thin=%d | incomplete %d/%d ========\n', ...
+    pass, nThin, numel(incomplete), nJobs);
+
+  improvedAny = false;
+  for ii = 1:numel(incomplete)
+    j = incomplete(ii);
+    job = jobs(j);
+    [oldRMax, ~] = storedFitRhat(job, keepChainsMin, rhatCritical);
+    fprintf('\n--- [%d/%d incomplete] %s | thin=%d | stored R-hat=%s ---\n', ...
+      ii, numel(incomplete), job.modelName, nThin, formatRhat(oldRMax));
+
+    [converged, attemptInfo] = runHierarchicalExecutionModel( ...
+      job.modelName, job.monitorParams, initEntrop, ...
+      'dataName', dataName, ...
+      'rhatCritical', rhatCritical, ...
+      'keepChainsMin', keepChainsMin, ...
+      'rhatParticipants', job.rhatParticipants, ...
+      'nBurnin', nBurnin, ...
+      'nSamples', nSamples, ...
+      'nThin', nThin, ...
+      'singleAttempt', true, ...
+      'preLoad', false, ...
+      'saveOnConverge', false, ...
+      'plotFailedRuns', false, ...
+      'saveFigures', false, ...
+      'resetThin', true);
+
+    newRMax = attemptInfo.rMax;
+    keepChains = attemptInfo.keepChains;
+    chains = attemptInfo.chains;
+    rHatByParam = attemptInfo.rHatByParam;
+    if isempty(chains)
+      fprintf('No chains returned — leaving stored draft unchanged\n');
+      continue;
+    end
+
+    isBetter = ~(isfinite(oldRMax)) || (isfinite(newRMax) && newRMax < oldRMax);
+    meetGate = isfinite(newRMax) && newRMax <= rhatCritical && ...
+      numel(keepChains) >= keepChainsMin;
+
+    if isBetter || meetGate
+      stats = struct();
+      diagnostics = struct();
+      info = struct('nThin', nThin, 'nBurnin', nBurnin, 'nSamples', nSamples, ...
+        'rhatParticipants', job.rhatParticipants, 'draft', ~meetGate);
+      if meetGate
+        chains = subsetChainsHierarchicalLocal(chains, keepChains);
+      end
+      rMax = newRMax;
+      save(job.storagePath, 'chains', 'stats', 'diagnostics', 'info', ...
+        'rHatByParam', 'rMax', '-v7.3');
+      improvedAny = true;
+      if meetGate
+        fprintf('Saved CONVERGED %s (R-hat max=%.3f, thin=%d)\n', ...
+          job.storagePath, newRMax, nThin);
+        clearMcmcState(storageDir, job.modelName);
+        done(j) = true;
+      else
+        fprintf('Saved DRAFT %s (R-hat max=%.3f < stored %s; thin=%d)\n', ...
+          job.storagePath, newRMax, formatRhat(oldRMax), nThin);
+        saveUnsuccessfulMcmcState(storageDir, job.modelName, nThin);
+      end
+      refreshParameterRobustnessFigures(job.modelName, newRMax, nThin, meetGate);
+    else
+      fprintf('Kept stored draft (new R-hat=%.3f not better than %.3f)\n', ...
+        newRMax, oldRMax);
+      saveUnsuccessfulMcmcState(storageDir, job.modelName, nThin);
+    end
+
+    if converged
+      done(j) = true;
+    end
+  end
+
+  if all(done)
+    break;
+  end
+  if ~improvedAny
+    fprintf('No R-hat improvements this pass at thin=%d\n', nThin);
+  end
+  nThin = nextThin(nThin);
+end
+
+fprintf('\n=== MAP prior-robustness draft loop complete ===\n');
+fprintf('  all %d jobs meet R-hat <= %.3g | storage: %s\n', nJobs, rhatCritical, storageDir);
+
+function jobs = buildMapJobs(modelSpecs, precVariants, mapModel, modelsDir, ...
+    jagsRobustDir, storageDir, dataName, engine)
+jobs = struct('modelName', {}, 'monitorParams', {}, 'rhatParticipants', {}, ...
+  'storagePath', {}, 'precScale', {});
 for m = 1:size(modelSpecs, 1)
   baseStem = modelSpecs{m, 1};
   monitorParams = modelSpecs{m, 2};
   rhatParticipants = find(mapModel == modelSpecs{m, 3});
   if isempty(rhatParticipants)
-    fprintf('\n--- %s — skip (no original-prior MAP participants) ---\n', baseStem);
-    nSkipped = nSkipped + size(precVariants, 1);
-    runIdx = runIdx + size(precVariants, 1);
+    fprintf('Skip %s — no original-prior MAP participants\n', baseStem);
     continue;
   end
   srcJags = resolveJagsModelFile(modelsDir, sprintf('%s_jags.txt', baseStem));
-
   for pv = 1:size(precVariants, 1)
     precLabel = precVariants{pv, 1};
     precScale = precVariants{pv, 2};
     modelName = cognitiveMuPrecStem(baseStem, precLabel);
-    runIdx = runIdx + 1;
-
-    storagePath = fullfile(storageDir, ...
-      sprintf('%s_%s_%s.mat', modelName, dataName, engine));
-    mcmcStatePath = fullfile(storageDir, sprintf('%s_mcmcState.mat', modelName));
-
-    if isfile(storagePath)
-      fprintf('\n--- [%d/%d] %s — skip (storage exists) ---\n', ...
-        runIdx, nRuns, modelName);
-      nSkipped = nSkipped + 1;
-      continue;
-    end
-    if isfile(mcmcStatePath)
-      fprintf('\n--- [%d/%d] %s — skip (mcmcState present; in progress elsewhere?) ---\n', ...
-        runIdx, nRuns, modelName);
-      nSkipped = nSkipped + 1;
-      continue;
-    end
-
     dstJags = fullfile(jagsRobustDir, sprintf('%s_jags.txt', modelName));
     if ~isfile(dstJags)
       generateHierarchicalMuPrecJags(srcJags, dstJags, precScale);
     else
       fprintf('Using existing JAGS %s\n', dstJags);
     end
-
-    fprintf('\n--- [%d/%d] %s | μ precision × %g ---\n', ...
-      runIdx, nRuns, modelName, precScale);
-    runHierarchicalExecutionModel(modelName, monitorParams, initEntrop, ...
-      'dataName', dataName, ...
-      'rhatCritical', rhatCritical, ...
-      'keepChainsMin', keepChainsMin, ...
-      'rhatParticipants', rhatParticipants, ...
-      'preLoad', true);
-    nFitted = nFitted + 1;
+    job = struct();
+    job.modelName = modelName;
+    job.monitorParams = monitorParams;
+    job.rhatParticipants = rhatParticipants;
+    job.storagePath = fullfile(storageDir, ...
+      sprintf('%s_%s_%s.mat', modelName, dataName, engine));
+    job.precScale = precScale;
+    jobs(end + 1) = job; %#ok<AGROW>
   end
 end
+end
 
-fprintf('\n=== MAP-only prior-robustness pass complete ===\n');
-fprintf('  fitted/attempted: %d | skipped: %d | storage: %s\n', ...
-  nFitted, nSkipped, storageDir);
+function [rMax, keepChains, rHatByParam] = storedFitRhat(job, keepChainsMin, rhatCritical)
+rMax = inf;
+keepChains = [];
+rHatByParam = struct();
+if ~isfile(job.storagePath)
+  return;
+end
+S = load(job.storagePath, 'chains');
+if ~isfield(S, 'chains') || isempty(S.chains)
+  return;
+end
+[rMax, keepChains, rHatByParam] = maxRhatOverMonitoredParams( ...
+  S.chains, job.monitorParams, keepChainsMin, rhatCritical, job.rhatParticipants);
+end
+
+function s = formatRhat(rMax)
+if ~(isfinite(rMax))
+  s = 'none';
+else
+  s = sprintf('%.3f', rMax);
+end
+end
 
 function mapModel = originalMapModels(chains, nParticipants, nModels)
 mapModel = nan(1, nParticipants);
@@ -146,5 +255,58 @@ stem = regexprep(baseStem, '_entrop$', ['MuPrec' precLabel '_entrop']);
 if strcmp(stem, baseStem)
   error('cognitiveMuPrecStem:badStem', ...
     'Expected stem ending in _entrop, got: %s', baseStem);
+end
+end
+
+function chainsOut = subsetChainsHierarchicalLocal(chainsIn, keepChains)
+fn = fieldnames(chainsIn);
+chainsOut = struct();
+for k = 1:numel(fn)
+  x = chainsIn.(fn{k});
+  if isnumeric(x) && ndims(x) >= 2 && size(x, 2) >= max(keepChains)
+    if ndims(x) == 2
+      chainsOut.(fn{k}) = x(:, keepChains);
+    else
+      idx = repmat({':'}, 1, ndims(x));
+      idx{2} = keepChains;
+      chainsOut.(fn{k}) = x(idx{:});
+    end
+  else
+    chainsOut.(fn{k}) = x;
+  end
+end
+end
+
+function refreshParameterRobustnessFigures(modelName, rMax, nThin, converged)
+% Rebuild git-linked repo eps/png and print a loud console note.
+try
+  fprintf('\n');
+  fprintf('**************************************************************\n');
+  fprintf('* PRIOR-ROBUSTNESS FIGURE REFRESH\n');
+  fprintf('* trigger: improved fit for %s\n', modelName);
+  fprintf('* R-hat max=%.3f | thin=%d | %s\n', ...
+    rMax, nThin, ternaryLabel(converged, 'CONVERGED', 'DRAFT'));
+  fprintf('**************************************************************\n');
+  pathsParam = refreshMapModelParameterRobustnessFigures();
+  pathsMatch = refreshMapModelForcedChoiceMatchFigures();
+  fprintf('* Updated repo figures (git-linked from manuscript):\n');
+  fprintf('*   %s\n', pathsParam.eps);
+  fprintf('*   %s\n', pathsParam.png);
+  fprintf('*   %s\n', pathsMatch.eps);
+  fprintf('*   %s\n', pathsMatch.png);
+  fprintf('**************************************************************\n\n');
+catch ME
+  fprintf(2, 'Prior-robustness figure refresh failed: %s\n', ME.message);
+  if ~isempty(ME.stack)
+    fprintf(2, '  at %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+  end
+end
+end
+
+function s = ternaryLabel(tf, a, b)
+if tf
+  s = a;
+else
+  s = b;
 end
 end

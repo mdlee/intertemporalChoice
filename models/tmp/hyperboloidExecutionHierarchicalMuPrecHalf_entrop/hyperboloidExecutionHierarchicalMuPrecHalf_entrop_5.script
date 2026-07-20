@@ -5,8 +5,8 @@ parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperbo
 parameters in "/home/mdlee/Dropbox/GitHub/intertemporalChoice/models/tmp/hyperboloidExecutionHierarchicalMuPrecHalf_entrop/hyperboloidExecutionHierarchicalMuPrecHalf_entrop_5.seed"
 initialize
 update 2000
-monitor set kappa, thin(1024)
-monitor set tau, thin(1024)
-monitor set w, thin(1024)
-update 5120000
+monitor set kappa, thin(16384)
+monitor set tau, thin(16384)
+monitor set w, thin(16384)
+update 81920000
 coda *, stem('samples_5_')
