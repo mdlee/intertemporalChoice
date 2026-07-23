@@ -8,12 +8,15 @@
 %   basic/                experimentalDesign, dataCounts
 %   latentMixture/        latentMixturePosteriors{,Half,Double},
 %                         latentMixturePriorRobustness
-%   descriptiveAdequacy/  mapModelPosteriorPredictive, mapModelForcedChoiceMatch
+%   descriptiveAdequacy/  mapModelPosteriorPredictive, allModelPosteriorPredictive,
+%                         mapModelForcedChoiceMatch
 %   parameterInferences/  parameterInferences, mapModelParameterRobustness
 %
 % mapModelPosteriorPredictive caches a cutdown summary under models/storage/
 % (mapModelPosteriorPredictive_summary_*.mat). Set regenerateMapPostPredSummaries
-% inside that case to rebuild. mapModelParameterRobustness and
+% inside that case to rebuild. allModelPosteriorPredictive caches
+% allModelPosteriorPredictive_summary_*.mat (PP + forced-choice match for every
+% model x participant). mapModelParameterRobustness and
 % mapModelForcedChoiceMatch need half/double cognitive fits from
 % models/runHierarchicalExecutionPriorRobustness.m.
 %
@@ -53,8 +56,9 @@ else
     %'latentMixturePosteriorsDouble', ...
     %'latentMixturePriorRobustness', ...
     %'mapModelPosteriorPredictive', ...
+    'allModelPosteriorPredictive', ...
     %'mapModelForcedChoiceMatch', ...
-    'mapModelParameterRobustness', ...
+    %'mapModelParameterRobustness', ...
     %'parameterInferences', ...
     };
 end
@@ -80,12 +84,14 @@ outputSubdirByAnalysis = containers.Map( ...
   {'experimentalDesign', 'dataCounts', ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
    'latentMixturePosteriorsDouble', 'latentMixturePriorRobustness', ...
-   'mapModelPosteriorPredictive', 'mapModelForcedChoiceMatch', ...
+   'mapModelPosteriorPredictive', 'allModelPosteriorPredictive', ...
+   'mapModelForcedChoiceMatch', ...
    'mapModelParameterRobustness', 'parameterInferences'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
    'latentMixture', 'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
+   'descriptiveAdequacy', ...
    'parameterInferences', 'parameterInferences'});
 
 [data, d] = prepareIntertemporalChoiceData(dataName);
@@ -1150,6 +1156,287 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
+    case 'allModelPosteriorPredictive'
+      % One 5x5 figure per model (8 cognitive + 3 contaminants): posterior
+      % predictive counts for that model applied to all participants. Panel
+      % labels show forced-choice agreement for that model.
+
+      % graphics constants (match mapModelPosteriorPredictive)
+      fontSize = 14;
+      titleFontSize = 14;
+      titleFontName = 'Helvetica';
+      titleFontWeight = 'normal';
+      labelFontSize = 16;
+      nRows = 5;
+      nCols = 5;
+      figPos = [0.2 0.2 0.45 0.6];
+      nPredSamples = 4000;
+      probDrawMin = 1 / max(500, nPredSamples);
+      tileLineWidth = 0.65;
+      obsEdgeDarken = 0.35;
+      obsLineWidth = 1.5;
+      minObsSide = 0.36;
+      predFaceClr = [1 1 1];
+      predEdgeClr = 0.55 * [1 1 1];
+      tickLength = 0.025;
+      raxesXShift = 0.01;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 1 0.8];
+      moveAxisShift = [0 0 0 0];
+      showTitles = true;
+      choiceThreshold = 0.5;
+      modelTitleFontSize = 14;
+      modelTitleFontName = 'Helvetica';
+      modelTitleFontWeight = 'normal';
+      titleYNorm = 1.06;
+      showXLabel = true;
+      showYLabel = true;
+      xLabelStr = 'Problem';
+      yLabelStr = 'Count LL';
+      supAxesPosTemplate = [];
+      supAxesBuf = 0.05;
+      supYLabelCloser = 0.025; % shift y superlabel right (toward panels)
+      supXLabelCloser = 0.025; % shift x superlabel up (toward panels)
+      showXTickLabels = true;
+      showYTickLabels = true;
+      tickLabelsOuterOnly = true;
+      sharedYLim = true;
+      showGrid = false;
+      showSgtitle = false;
+      rngSeed = 42;
+      regenerateAllModelPostPredSummaries = false;
+
+      summaryPath = fullfile(storageDir, ...
+        sprintf('allModelPosteriorPredictive_summary_%s_%s.mat', dataName, engine));
+
+      [pmfPadByModel, matchPropByModel, rebuilt] = loadOrBuildAllModelPostPredSummary( ...
+        summaryPath, regenerateAllModelPostPredSummaries, ...
+        storageDir, dataName, engine, ...
+        cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
+        data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed, ...
+        choiceThreshold);
+      if rebuilt
+        fprintf('Wrote all-model post-pred summary %s\n', summaryPath);
+      else
+        fprintf('Loaded all-model post-pred summary %s\n', summaryPath);
+      end
+
+      for mi = 1:nModels
+        pmfPadByParticipant = pmfPadByModel{mi};
+        matchProp = matchPropByModel(mi, :);
+
+        F = figure; clf;
+        setFigure(F, figPos, '');
+        set(F, 'Color', 'w', 'renderer', 'painters');
+
+        contentPos = nan(nRows * nCols, 4);
+        for pp = 1:(nRows * nCols)
+          ax = subplot(nRows, nCols, pp);
+          if pp > nP
+            axis(ax, 'off');
+            continue;
+          end
+
+          if isempty(pmfPadByParticipant) || isempty(pmfPadByParticipant{pp})
+            text(ax, 0.5, 0.5, 'No fit', 'Units', 'normalized', ...
+              'HorizontalAlignment', 'center', 'FontSize', fontSize);
+            if showTitles
+              text(ax, 0, titleYNorm, participantLabels{pp}, ...
+                'Units', 'normalized', ...
+                'HorizontalAlignment', 'left', ...
+                'VerticalAlignment', 'bottom', ...
+                'FontName', titleFontName, ...
+                'FontSize', titleFontSize, ...
+                'FontWeight', titleFontWeight, ...
+                'Interpreter', 'none', ...
+                'Clipping', 'off');
+            end
+            continue;
+          end
+
+          pmfPad = pmfPadByParticipant{pp};
+
+          if sharedYLim
+            yHi = maxKGlobal;
+          else
+            yHi = maxKByPar(pp);
+          end
+
+          if isempty(pmfPad) || all(isnan(pmfPad(:)), 'all')
+            text(ax, 0.5, 0.5, 'No \theta', 'Units', 'normalized', ...
+              'HorizontalAlignment', 'center', 'FontSize', fontSize);
+          else
+            maxProb = max(pmfPad(:), [], 'omitnan');
+            if ~(maxProb > 0)
+              text(ax, 0.5, 0.5, 'No mass', 'Units', 'normalized', ...
+                'HorizontalAlignment', 'center', 'FontSize', fontSize);
+            else
+              scale = 0.92 / sqrt(maxProb);
+              hold(ax, 'on');
+
+              obsRow = obsCntMat(pp, :);
+              flat = pmfPad(:);
+              [sortedProb, ord] = sort(flat, 'ascend', 'ComparisonMethod', 'real');
+              [pjVec, kIdxVec] = ind2sub(size(pmfPad), ord);
+              for z = 1:numel(sortedProb)
+                prob = sortedProb(z);
+                if isnan(prob) || prob < probDrawMin
+                  continue;
+                end
+                pj = pjVec(z);
+                k = kIdxVec(z) - 1;
+                nk = nTpMat(pp, pj);
+                if nk <= 0 || k > nk || k < 0
+                  continue;
+                end
+                dispIdx = displayNumber(pj);
+                side = min(scale * sqrt(prob), 0.92);
+                ko = obsRow(pj);
+                isObs = isfinite(ko) && round(ko) == k;
+                if isObs
+                  continue;
+                end
+                rectangle(ax, 'Position', [dispIdx - side / 2, k - side / 2, side, side], ...
+                  'FaceColor', predFaceClr, 'EdgeColor', predEdgeClr, 'LineWidth', tileLineWidth);
+              end
+
+              for dispIdx = 1:nPairs
+                pj = problemOrder(dispIdx);
+                nk = nTpMat(pp, pj);
+                if nk <= 0
+                  continue;
+                end
+                ko = obsRow(pj);
+                if ~isfinite(ko)
+                  continue;
+                end
+                ko = round(ko);
+                if ko < 0 || ko > nk
+                  continue;
+                end
+                prob = pmfPad(pj, ko + 1);
+                if isnan(prob) || prob < 0
+                  prob = 0;
+                end
+                rawSide = min(scale * sqrt(max(prob, eps)), 0.92);
+                if prob < probDrawMin
+                  side = min(max(rawSide, minObsSide), 0.92);
+                else
+                  side = rawSide;
+                end
+                face = problemClr{pairTypeByProblem(pj)};
+                edge = max(0, face * (1 - obsEdgeDarken));
+                rectangle(ax, 'Position', [dispIdx - side / 2, ko - side / 2, side, side], ...
+                  'FaceColor', face, 'EdgeColor', edge, 'LineWidth', obsLineWidth);
+              end
+              hold(ax, 'off');
+            end
+          end
+
+          xlim(ax, [1 nPairs]);
+          ylim(ax, [0 yHi]);
+          set(ax, ...
+            'TickDir', 'out', ...
+            'Box', 'off', ...
+            'FontSize', fontSize, ...
+            'XTick', problemXtickLabels, ...
+            'xticklabelrot', 0, ...
+            'YTick', [0 yHi], ...
+            'TickLength', [tickLength 0], ...
+            'clipping', 'off');
+          onBottom = pp > (nRows - 1) * nCols;
+          onLeft = mod(pp, nCols) == 1;
+          showXHere = showXTickLabels && (~tickLabelsOuterOnly || onBottom);
+          showYHere = showYTickLabels && (~tickLabelsOuterOnly || onLeft);
+          if ~showXHere
+            set(ax, 'XTickLabel', []);
+          end
+          if ~showYHere
+            set(ax, 'YTickLabel', []);
+          end
+          if showGrid
+            grid(ax, 'on');
+          end
+          moveAxis(gca, moveAxisScale, moveAxisShift);
+          contentPos(pp, :) = get(ax, 'Position');
+          [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+          set([axX axY], 'Tag', 'RaxesCopy');
+          title(axX, '');
+          title(axY, '');
+          title(ax, '');
+          if showTitles
+            text(ax, 0, titleYNorm, participantLabels{pp}, ...
+              'Units', 'normalized', ...
+              'HorizontalAlignment', 'left', ...
+              'VerticalAlignment', 'bottom', ...
+              'FontName', titleFontName, ...
+              'FontSize', titleFontSize, ...
+              'FontWeight', titleFontWeight, ...
+              'Interpreter', 'none', ...
+              'Clipping', 'off');
+            if isfinite(matchProp(pp))
+              matchStr = sprintf('%d%%', round(100 * matchProp(pp)));
+              text(ax, 1, titleYNorm, matchStr, ...
+                'Units', 'normalized', ...
+                'HorizontalAlignment', 'right', ...
+                'VerticalAlignment', 'bottom', ...
+                'FontName', modelTitleFontName, ...
+                'FontSize', modelTitleFontSize, ...
+                'FontWeight', modelTitleFontWeight, ...
+                'Interpreter', 'none', ...
+                'Clipping', 'off');
+            end
+          end
+        end
+
+        supAxesPos = supAxesPosTemplate;
+        if isempty(supAxesPos)
+          keep = all(isfinite(contentPos), 2);
+          pos = contentPos(keep, :);
+          leftMin = min(pos(:, 1));
+          bottomMin = min(pos(:, 2));
+          leftMax = max(pos(:, 1) + pos(:, 3));
+          bottomMax = max(pos(:, 2) + pos(:, 4));
+          supAxesPos = [ ...
+            leftMin - supAxesBuf - raxesYShift, ...
+            bottomMin - supAxesBuf - raxesXShift, ...
+            (leftMax - leftMin) + 2 * supAxesBuf + raxesYShift, ...
+            (bottomMax - bottomMin) + 2 * supAxesBuf + raxesXShift];
+        end
+
+        if showXLabel
+          [~, Hx] = suplabel(xLabelStr, 'x', supAxesPos);
+          hxPos = get(Hx, 'Position');
+          hxPos(2) = hxPos(2) + supXLabelCloser;
+          set(Hx, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+            'Position', hxPos);
+        end
+        if showYLabel
+          [~, Hy] = suplabel(yLabelStr, 'y', supAxesPos);
+          hyPos = get(Hy, 'Position');
+          hyPos(1) = hyPos(1) + supYLabelCloser;
+          set(Hy, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+            'Position', hyPos);
+        end
+
+        if showSgtitle
+          sgtitle(sprintf('%s posterior predictive counts', modelLong{mi}), ...
+            'FontWeight', 'normal', 'FontSize', titleFontSize + 2);
+        end
+
+        if printFigures
+          pngPath = fullfile(figuresDir, ...
+            sprintf('%s_%s.png', analysisName, modelShort{mi}));
+          epsPath = fullfile(figuresDir, ...
+            sprintf('%s_%s.eps', analysisName, modelShort{mi}));
+          print(pngPath, '-dpng', '-r300');
+          print(epsPath, '-depsc');
+          fprintf('Saved %s and %s\n', pngPath, epsPath);
+        end
+      end
+      saveFigure = false; % already saved per-model above (or interactive)
+
+    %% ================================================================
     case 'mapModelForcedChoiceMatch'
       % Forced-choice agreement for each participant's original-MAP model,
       % comparing that same model's fits under original / half / double mu
@@ -1938,6 +2225,116 @@ save(summaryPath, ...
   'mapModel', 'mapProb', 'pmfPadByParticipant', ...
   'sourcePaths', 'sourceMtimes', ...
   'nPredSamples', 'rngSeed', 'nP', 'mixtureName', '-v7.3');
+rebuilt = true;
+end
+
+function [pmfPadByModel, matchPropByModel, rebuilt] = loadOrBuildAllModelPostPredSummary( ...
+  summaryPath, forceRegen, ...
+  storageDir, dataName, engine, ...
+  cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
+  data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed, ...
+  choiceThreshold)
+%LOADORBUILDALLMODELPOSTPREDSUMMARY  Cache PP PMFs + forced-choice match for all models.
+
+needBuild = forceRegen || ~isfile(summaryPath);
+
+if ~needBuild
+  S = load(summaryPath);
+  needBuild = ~(isfield(S, 'pmfPadByModel') && isfield(S, 'matchPropByModel') && ...
+    isfield(S, 'sourcePaths') && isfield(S, 'sourceMtimes') && ...
+    isfield(S, 'nPredSamples') && isfield(S, 'rngSeed') && ...
+    isfield(S, 'nP') && isfield(S, 'nModels') && isfield(S, 'choiceThreshold'));
+  if ~needBuild
+    needBuild = ~(S.nPredSamples == nPredSamples && S.rngSeed == rngSeed && ...
+      S.nP == nP && S.nModels == nModels && S.choiceThreshold == choiceThreshold);
+  end
+  if ~needBuild
+    curMt = nan(numel(S.sourcePaths), 1);
+    for k = 1:numel(S.sourcePaths)
+      curMt(k) = fileMtime(S.sourcePaths{k});
+    end
+    needBuild = any(~isfinite(curMt)) || ~isequal(curMt(:), S.sourceMtimes(:));
+  end
+  % Rebuild when a previously missing model fit has since appeared
+  if ~needBuild
+    for mi = 1:nModels
+      if mi <= 8
+        stem = cognitiveStems{mi};
+      else
+        stem = contaminantStems{mi - 8};
+      end
+      fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+      if isfile(fpath) && ~any(strcmp(S.sourcePaths, fpath))
+        needBuild = true;
+        break;
+      end
+    end
+  end
+  if ~needBuild
+    pmfPadByModel = S.pmfPadByModel;
+    matchPropByModel = S.matchPropByModel;
+    rebuilt = false;
+    return;
+  end
+end
+
+fprintf('Building all-model post-pred summary from full chains...\n');
+rng(rngSeed);
+
+pmfPadByModel = cell(nModels, 1);
+matchPropByModel = nan(nModels, nP);
+sourcePaths = {};
+sourceMtimes = [];
+
+for mi = 1:nModels
+  if mi <= 8
+    stem = cognitiveStems{mi};
+  else
+    stem = contaminantStems{mi - 8};
+  end
+  fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+  pmfPadByModel{mi} = cell(1, nP);
+  if ~isfile(fpath)
+    warning('Missing fit for model %s (%s)', modelLong{mi}, fpath);
+    continue;
+  end
+  fprintf('Loading %s\n', fpath);
+  L = load(fpath, 'chains');
+  chains = L.chains;
+  sourcePaths{end + 1} = fpath; %#ok<AGROW>
+  sourceMtimes(end + 1, 1) = fileMtime(fpath); %#ok<AGROW>
+
+  for pp = 1:nP
+    if mi <= 8
+      Th = hierarchicalExecutionThetaDraws( ...
+        chains, data, cognitiveJagsNames{mi}, pp);
+      pmfPadByModel{mi}{pp} = postPredictiveCountPmfFromTheta( ...
+        Th, d.pair(pp, :), nPairs, nTpMat(pp, :), nPredSamples);
+    else
+      pmfPadByModel{mi}{pp} = postPredictiveCountPmfFromMonitoredTheta( ...
+        chains, pp, d.pair(pp, :), nT, nPairs, nTpMat(pp, :), nPredSamples);
+    end
+
+    meanTh = mapModelMeanTheta(chains, data, cognitiveJagsNames, mi, pp, nT);
+    if isempty(meanTh) || numel(meanTh) ~= nT
+      continue;
+    end
+    obs = d.LL(pp, :);
+    forcedLL = nan(size(meanTh));
+    forcedLL(meanTh > choiceThreshold) = 1;
+    forcedLL(meanTh < choiceThreshold) = 0;
+    valid = isfinite(forcedLL) & isfinite(obs);
+    if any(valid)
+      matchPropByModel(mi, pp) = mean(forcedLL(valid) == obs(valid));
+    end
+  end
+  clear chains L;
+end
+
+save(summaryPath, ...
+  'pmfPadByModel', 'matchPropByModel', ...
+  'sourcePaths', 'sourceMtimes', ...
+  'nPredSamples', 'rngSeed', 'nP', 'nModels', 'choiceThreshold', '-v7.3');
 rebuilt = true;
 end
 

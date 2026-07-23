@@ -6,6 +6,8 @@
 %
 % Draft-first schedule (for incremental mapModelParameterRobustness figures):
 %   - Start at thin=1 with short MCMC (1e3 burn-in, 2e3 samples)
+%   - Warm-start each chain near the converged *original-prior* hierarchical
+%     posterior means for monitored participant parameters (5% jitter)
 %   - After every attempt, save storage/*.mat if better (lower) R-hat than
 %     any existing draft — even when not yet converged
 %   - If a job does not converge, move on to the next incomplete job
@@ -48,19 +50,36 @@ precVariants = {
   };
 
 [~, d] = prepareIntertemporalChoiceData(dataName);
-initEntrop = @() struct('w', rand(d.nParticipants, 1) * 2 + 0.5);
+nParticipants = double(d.nParticipants);
 mixturePath = fullfile(storageDir, ...
   sprintf('latentMixtureHierarchicalPrecision_entrop_%s_%s.mat', dataName, engine));
 if ~isfile(mixturePath)
   error('Missing original-prior mixture fit: %s', mixturePath);
 end
 mixS = load(mixturePath, 'chains');
-mapModel = originalMapModels(mixS.chains, double(d.nParticipants), 11);
+mapModel = originalMapModels(mixS.chains, nParticipants, 11);
 clear mixS;
+
+% Warm-start generators from converged original-prior hierarchical fits.
+warmStartByBase = containers.Map('KeyType', 'char', 'ValueType', 'any');
+for m = 1:size(modelSpecs, 1)
+  baseStem = modelSpecs{m, 1};
+  monitorParams = modelSpecs{m, 2};
+  origPath = fullfile(storageDir, ...
+    sprintf('%s_%s_%s.mat', baseStem, dataName, engine));
+  if ~isfile(origPath)
+    error('Missing original-prior hierarchical fit for warm start: %s', origPath);
+  end
+  fprintf('Warm-start source: %s\n', origPath);
+  origS = load(origPath, 'chains');
+  warmStartByBase(baseStem) = makeWarmStartInitFromChains( ...
+    origS.chains, monitorParams, nParticipants, 'jitterFrac', 0.05);
+  clear origS;
+end
 
 % Build job list: one entry per (MAP model × half/double) with ≥1 MAP participant.
 jobs = buildMapJobs(modelSpecs, precVariants, mapModel, modelsDir, jagsRobustDir, ...
-  storageDir, dataName, engine);
+  storageDir, dataName, engine, warmStartByBase);
 nJobs = numel(jobs);
 if nJobs == 0
   error('No MAP cognitive jobs to run.');
@@ -69,6 +88,7 @@ end
 fprintf('=== MAP prior-robustness draft loop: %d jobs ===\n', nJobs);
 fprintf('  burn-in=%g | samples=%g | start thin=%d | R-hat<=%.3g | keepChains>=%d\n', ...
   nBurnin, nSamples, nThin, rhatCritical, keepChainsMin);
+fprintf('  warm-start from original-prior hierarchical posterior means (5%% jitter)\n');
 fprintf('  save every attempt if R-hat improves; advance thin after each full pass\n');
 for j = 1:nJobs
   fprintf('  [%d] %s | MAP participants [%s] (%d)\n', ...
@@ -101,7 +121,7 @@ while ~all(done)
       ii, numel(incomplete), job.modelName, nThin, formatRhat(oldRMax));
 
     [converged, attemptInfo] = runHierarchicalExecutionModel( ...
-      job.modelName, job.monitorParams, initEntrop, ...
+      job.modelName, job.monitorParams, job.initGenerator, ...
       'dataName', dataName, ...
       'rhatCritical', rhatCritical, ...
       'keepChainsMin', keepChainsMin, ...
@@ -176,9 +196,9 @@ fprintf('\n=== MAP prior-robustness draft loop complete ===\n');
 fprintf('  all %d jobs meet R-hat <= %.3g | storage: %s\n', nJobs, rhatCritical, storageDir);
 
 function jobs = buildMapJobs(modelSpecs, precVariants, mapModel, modelsDir, ...
-    jagsRobustDir, storageDir, dataName, engine)
+    jagsRobustDir, storageDir, dataName, engine, warmStartByBase)
 jobs = struct('modelName', {}, 'monitorParams', {}, 'rhatParticipants', {}, ...
-  'storagePath', {}, 'precScale', {});
+  'storagePath', {}, 'precScale', {}, 'initGenerator', {}, 'baseStem', {});
 for m = 1:size(modelSpecs, 1)
   baseStem = modelSpecs{m, 1};
   monitorParams = modelSpecs{m, 2};
@@ -186,6 +206,9 @@ for m = 1:size(modelSpecs, 1)
   if isempty(rhatParticipants)
     fprintf('Skip %s — no original-prior MAP participants\n', baseStem);
     continue;
+  end
+  if ~isKey(warmStartByBase, baseStem)
+    error('Missing warm-start generator for %s', baseStem);
   end
   srcJags = resolveJagsModelFile(modelsDir, sprintf('%s_jags.txt', baseStem));
   for pv = 1:size(precVariants, 1)
@@ -205,6 +228,8 @@ for m = 1:size(modelSpecs, 1)
     job.storagePath = fullfile(storageDir, ...
       sprintf('%s_%s_%s.mat', modelName, dataName, engine));
     job.precScale = precScale;
+    job.initGenerator = warmStartByBase(baseStem);
+    job.baseStem = baseStem;
     jobs(end + 1) = job; %#ok<AGROW>
   end
 end
