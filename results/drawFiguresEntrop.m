@@ -9,16 +9,19 @@
 %   latentMixture/        latentMixturePosteriors{,Half,Double},
 %                         latentMixturePriorRobustness
 %   descriptiveAdequacy/  mapModelPosteriorPredictive, allModelPosteriorPredictive,
-%                         mapModelForcedChoiceMatch
-%   parameterInferences/  parameterInferences, mapModelParameterRobustness
+%                         mapModelForcedChoiceMatch, modelAgreementTables
+%   parameterInferences/  parameterInferences, allParameterInferences,
+%                         mapModelParameterRobustness
 %
 % mapModelPosteriorPredictive caches a cutdown summary under models/storage/
 % (mapModelPosteriorPredictive_summary_*.mat). Set regenerateMapPostPredSummaries
 % inside that case to rebuild. allModelPosteriorPredictive caches
 % allModelPosteriorPredictive_summary_*.mat (PP + forced-choice match for every
-% model x participant). mapModelParameterRobustness and
-% mapModelForcedChoiceMatch need half/double cognitive fits from
-% models/runHierarchicalExecutionPriorRobustness.m.
+% model x participant). allParameterInferences writes one parameter-CI figure
+% per model (all participants). modelAgreementTables writes APA LaTeX tables
+% under manuscripts/ (forced-choice agreement + mean P(observed)).
+% mapModelParameterRobustness and mapModelForcedChoiceMatch need half/double
+% cognitive fits from models/runHierarchicalExecutionPriorRobustness.m.
 %
 % Run from results/:
 %   drawFiguresEntrop
@@ -56,10 +59,12 @@ else
     %'latentMixturePosteriorsDouble', ...
     %'latentMixturePriorRobustness', ...
     %'mapModelPosteriorPredictive', ...
-    'allModelPosteriorPredictive', ...
+    %'allModelPosteriorPredictive', ...
     %'mapModelForcedChoiceMatch', ...
+    %'modelAgreementTables', ...
     %'mapModelParameterRobustness', ...
     %'parameterInferences', ...
+    'allParameterInferences', ...
     };
 end
 clear overrideList;
@@ -85,14 +90,16 @@ outputSubdirByAnalysis = containers.Map( ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
    'latentMixturePosteriorsDouble', 'latentMixturePriorRobustness', ...
    'mapModelPosteriorPredictive', 'allModelPosteriorPredictive', ...
-   'mapModelForcedChoiceMatch', ...
-   'mapModelParameterRobustness', 'parameterInferences'}, ...
+   'mapModelForcedChoiceMatch', 'modelAgreementTables', ...
+   'mapModelParameterRobustness', 'parameterInferences', ...
+   'allParameterInferences'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
    'latentMixture', 'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
-   'descriptiveAdequacy', ...
-   'parameterInferences', 'parameterInferences'});
+   'descriptiveAdequacy', 'descriptiveAdequacy', ...
+   'parameterInferences', 'parameterInferences', ...
+   'parameterInferences'});
 
 [data, d] = prepareIntertemporalChoiceData(dataName);
 nP = double(d.nParticipants);
@@ -1437,6 +1444,114 @@ for analysisIdx = 1:numel(analysisList)
       saveFigure = false; % already saved per-model above (or interactive)
 
     %% ================================================================
+    case 'modelAgreementTables'
+      % APA LaTeX tables (manuscripts/): forced-choice agreement and mean
+      % P(observed decision) for every model x participant. Bold = MAP model.
+      % Forced choice: mean P(LL) >= .5 => LL, else SS.
+
+      choiceThreshold = 0.5; % >= threshold => LL (so Gu at .5 is determinate)
+      manuscriptsDir = fullfile(resultsDir, '..', 'manuscripts');
+
+      mapSummaryPath = fullfile(storageDir, ...
+        sprintf('mapModelForcedChoiceMatch_summary_origMAP_original_%s_%s.mat', ...
+          dataName, engine));
+      if ~isfile(mapSummaryPath)
+        mapSummaryPath = fullfile(storageDir, ...
+          sprintf('mapModelForcedChoiceMatch_summary_%s_%s_%s.mat', ...
+            mixtureName, dataName, engine));
+      end
+      if ~isfile(mapSummaryPath)
+        error('Missing MAP summary (needed to bold MAP cells): %s', mapSummaryPath);
+      end
+      mapS = load(mapSummaryPath, 'mapModel');
+      mapModelRow = mapS.mapModel(:)';
+      if numel(mapModelRow) ~= nP
+        error('mapModel length %d does not match nP=%d', numel(mapModelRow), nP);
+      end
+      fprintf('Loaded MAP models from %s\n', mapSummaryPath);
+
+      matchProp = nan(nModels, nP);
+      meanObsProb = nan(nModels, nP);
+      for mi = 1:nModels
+        if mi <= 8
+          stem = cognitiveStems{mi};
+        else
+          stem = contaminantStems{mi - 8};
+        end
+        fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+        if ~isfile(fpath)
+          warning('Missing %s', fpath);
+          continue;
+        end
+        fprintf('Loading %s\n', fpath);
+        L = load(fpath, 'chains');
+        chains = L.chains;
+        for pp = 1:nP
+          meanTh = mapModelMeanTheta( ...
+            chains, data, cognitiveJagsNames, mi, pp, nT);
+          if isempty(meanTh) || numel(meanTh) ~= nT
+            continue;
+          end
+          obs = d.LL(pp, :);
+          validObs = isfinite(obs) & isfinite(meanTh);
+
+          forcedLL = nan(size(meanTh));
+          forcedLL(meanTh >= choiceThreshold) = 1;
+          forcedLL(meanTh < choiceThreshold) = 0;
+          validForce = isfinite(forcedLL) & validObs;
+          if any(validForce)
+            matchProp(mi, pp) = mean(forcedLL(validForce) == obs(validForce));
+          end
+
+          pObs = nan(size(meanTh));
+          pObs(obs == 1) = meanTh(obs == 1);
+          pObs(obs == 0) = 1 - meanTh(obs == 0);
+          if any(validObs)
+            meanObsProb(mi, pp) = mean(pObs(validObs));
+          end
+        end
+        clear chains L;
+      end
+
+      abbrevNote = [ ...
+        'Model abbreviations: Ex~=~exponential, Hc~=~hyperbolic, Hd~=~hyperboloid, ', ...
+        'PD~=~proportional differences, DD~=~direct differences, Tr~=~tradeoff, ', ...
+        'UT~=~unified tradeoff, IT~=~intertemporal choice heuristic, ', ...
+        'Gu~=~guess, LL~=~larger-later contaminant, SS~=~smaller-sooner contaminant. ', ...
+        '\textbf{Bold} entries mark the model with the highest posterior probability ', ...
+        'for that participant in the latent-mixture analysis.'];
+
+      writeModelParticipantTable( ...
+        fullfile(manuscriptsDir, 'forcedChoiceAgreementTable.tex'), ...
+        matchProp, mapModelRow, modelShort, ...
+        ['Forced-choice posterior predictive agreement (percentage of trials) ', ...
+         'for each model and participant. For each trial, the model''s posterior ', ...
+         'mean $P(\mathrm{LL})$ was mapped to a forced larger-later prediction if ', ...
+         'it was at least $.5$ and to a smaller-sooner prediction otherwise; ', ...
+         'agreement is the proportion of trials matching the participant''s ', ...
+         'observed choice. ', abbrevNote], ...
+        'tab:forcedChoiceAgreement', true);
+
+      writeModelParticipantTable( ...
+        fullfile(manuscriptsDir, 'meanObservedDecisionProbTable.tex'), ...
+        meanObsProb, mapModelRow, modelShort, ...
+        ['Mean posterior predictive probability of the observed decision ', ...
+         '(percentage) for each model and participant. For each trial, the ', ...
+         'probability assigned to the participant''s chosen alternative was taken ', ...
+         'from the model''s posterior mean $P(\mathrm{LL})$, and these trial-level ', ...
+         'probabilities were averaged. ', abbrevNote], ...
+        'tab:meanObservedDecisionProb', true);
+
+      writeModelParticipantCsv( ...
+        fullfile(figuresDir, 'forcedChoiceAgreement_allModels.csv'), ...
+        matchProp, modelShort);
+      writeModelParticipantCsv( ...
+        fullfile(figuresDir, 'meanObservedDecisionProb_allModels.csv'), ...
+        meanObsProb, modelShort);
+
+      saveFigure = false; % tables only
+
+    %% ================================================================
     case 'mapModelForcedChoiceMatch'
       % Forced-choice agreement for each participant's original-MAP model,
       % comparing that same model's fits under original / half / double mu
@@ -2089,6 +2204,186 @@ for analysisIdx = 1:numel(analysisList)
           'Clipping', 'off');
       end
 
+    %% ================================================================
+    case 'allParameterInferences'
+      % One 5x5 figure per model: that model's parameter means (+ 95% CI)
+      % for every participant (parallel to allModelPosteriorPredictive).
+
+      fontSize = 10;
+      tickLabelFontSize = fontSize + 1;
+      xTickLabelRotation = 90;
+      titleFontSize = 14;
+      titleFontName = 'Helvetica';
+      titleFontWeight = 'normal';
+      modelTitleFontSize = 14;
+      modelTitleFontName = 'Helvetica';
+      modelTitleFontWeight = 'normal';
+      titleYNorm = 1.06;
+      figPos = [0.2 0.2 0.45 0.6];
+      CIbounds = [2.5 97.5];
+      markerFace = pantone.ClassicBlue;
+      markerSize = 5;
+      ciLineWidth = 1.2;
+      tickLength = 0.02;
+      raxesXShift = 0.01;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 1 0.7];
+      moveAxisShift = [0 0.015 0 0];
+      yLimFixed = [-5 10];
+      meanLabelFontSize = 7;
+      meanLabelYOffset = 0.45;
+      nRows = 5;
+      nCols = 5;
+
+      parameterNames = { ...
+        {'kappa', 'w'}; ...
+        {'kappa', 'w'}; ...
+        {'kappa', 'tau', 'w'}; ...
+        {'delta', 'w'}; ...
+        {'delta', 'omega', 'w'}; ...
+        {'gamma', 'kappa', 'tau', 'vartheta', 'w'}; ...
+        {'gamma', 'kappa', 'tau', 'vartheta', 'eta', 'w'}; ...
+        {'betaRA', 'betaRR', 'betaTA', 'betaTR', 'beta0', 'w'}; ...
+        {}; ...
+        {'alpha'}; ...
+        {'alpha'} ...
+        };
+
+      modelStems = [cognitiveStems, contaminantStems];
+      mn = cell(nModels, 1);
+      ci = cell(nModels, 1);
+      for mi = 1:nModels
+        nPar = numel(parameterNames{mi});
+        mn{mi} = nan(nP, max(nPar, 1));
+        ci{mi} = nan(nP, max(nPar, 1), 2);
+        if nPar == 0
+          continue;
+        end
+        fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', modelStems{mi}, dataName, engine));
+        if ~isfile(fpath)
+          error('Missing model chains for %s: %s', modelShort{mi}, fpath);
+        end
+        fprintf('Loading %s\n', fpath);
+        S = load(fpath, 'chains');
+        for pp = 1:nP
+          for k = 1:nPar
+            [mu, qLo, qHi] = indexedParamSummary( ...
+              S.chains, parameterNames{mi}{k}, pp, CIbounds / 100);
+            mn{mi}(pp, k) = mu;
+            ci{mi}(pp, k, 1) = qLo;
+            ci{mi}(pp, k, 2) = qHi;
+          end
+        end
+        clear S;
+      end
+
+      for mi = 1:nModels
+        pNames = parameterNames{mi};
+        nPar = numel(pNames);
+
+        F = figure; clf;
+        setFigure(F, figPos, '');
+        set(F, 'Color', 'w', 'renderer', 'painters');
+
+        for pp = 1:(nRows * nCols)
+          ax = subplot(nRows, nCols, pp);
+          if pp > nP
+            axis(ax, 'off');
+            continue;
+          end
+          hold(ax, 'on');
+          if nPar == 0
+            text(ax, 0.5, 0.5, lower(modelShort{mi}), ...
+              'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+              'FontSize', titleFontSize);
+            set(ax, 'XTick', [], 'YTick', [], 'Box', 'off');
+            hold(ax, 'off');
+            text(ax, 0, titleYNorm, participantLabels{pp}, ...
+              'Units', 'normalized', ...
+              'HorizontalAlignment', 'left', ...
+              'VerticalAlignment', 'bottom', ...
+              'FontName', titleFontName, ...
+              'FontSize', titleFontSize, ...
+              'FontWeight', titleFontWeight, ...
+              'Interpreter', 'none', ...
+              'Clipping', 'off');
+            continue;
+          end
+          for k = 1:nPar
+            plot(ax, [k k], squeeze(ci{mi}(pp, k, :))', '-', ...
+              'Color', markerFace, 'LineWidth', ciLineWidth);
+            plot(ax, k, mn{mi}(pp, k), 'o', ...
+              'MarkerFaceColor', markerFace, ...
+              'MarkerEdgeColor', 'none', ...
+              'MarkerSize', markerSize);
+            if isfinite(mn{mi}(pp, k))
+              text(ax, k, mn{mi}(pp, k) + meanLabelYOffset, ...
+                sprintf('%.2g', mn{mi}(pp, k)), ...
+                'HorizontalAlignment', 'center', ...
+                'VerticalAlignment', 'bottom', ...
+                'FontSize', meanLabelFontSize, ...
+                'Color', markerFace, ...
+                'Clipping', 'off');
+            end
+          end
+          hold(ax, 'off');
+          xlim(ax, [1 nPar] + [-0.5 0.5]);
+          if isempty(yLimFixed)
+            vals = [mn{mi}(pp, 1:nPar), reshape(ci{mi}(pp, 1:nPar, :), 1, [])];
+            vals = vals(isfinite(vals));
+            if isempty(vals)
+              yl = [-1 1];
+            else
+              pad = 0.1 * max(range(vals), 1);
+              yl = [min(vals) - pad, max(vals) + pad];
+            end
+            ylim(ax, yl);
+          else
+            ylim(ax, yLimFixed);
+          end
+          set(ax, ...
+            'XTick', 1:nPar, ...
+            'XTickLabel', parameterLatexLabels(pNames), ...
+            'XTickLabelRotation', xTickLabelRotation, ...
+            'TickLabelInterpreter', 'latex', ...
+            'TickDir', 'out', ...
+            'TickLength', [tickLength 0], ...
+            'Box', 'off', ...
+            'FontSize', tickLabelFontSize, ...
+            'Clipping', 'off');
+          title(ax, '');
+          moveAxis(gca, moveAxisScale, moveAxisShift);
+          [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+          set([axX axY], 'Tag', 'RaxesCopy');
+          set(axX, 'TickLabelInterpreter', 'latex', ...
+            'XTickLabelRotation', xTickLabelRotation, ...
+            'FontSize', tickLabelFontSize);
+          title(axX, '');
+          title(axY, '');
+          title(ax, '');
+          text(ax, 0, titleYNorm, participantLabels{pp}, ...
+            'Units', 'normalized', ...
+            'HorizontalAlignment', 'left', ...
+            'VerticalAlignment', 'bottom', ...
+            'FontName', titleFontName, ...
+            'FontSize', titleFontSize, ...
+            'FontWeight', titleFontWeight, ...
+            'Interpreter', 'none', ...
+            'Clipping', 'off');
+        end
+
+        if printFigures
+          pngPath = fullfile(figuresDir, ...
+            sprintf('%s_%s.png', analysisName, modelShort{mi}));
+          epsPath = fullfile(figuresDir, ...
+            sprintf('%s_%s.eps', analysisName, modelShort{mi}));
+          print(pngPath, '-dpng', '-r300');
+          print(epsPath, '-depsc');
+          fprintf('Saved %s and %s\n', pngPath, epsPath);
+        end
+      end
+      saveFigure = false; % already saved per-model above
+
   end
 
   % ---- print ----
@@ -2683,4 +2978,72 @@ end
 fprintf('Loading %s\n', fpath);
 L = load(fpath, 'chains');
 chains = L.chains;
+end
+
+function writeModelParticipantTable(outTex, values, mapModel, modelShort, caption, label, asPercent)
+%WRITEMODELPARTICIPANTTABLE  APA sidewaystable: participants x models.
+nModels = numel(modelShort);
+nP = size(values, 2);
+fid = fopen(outTex, 'w');
+if fid < 0
+  error('Could not write %s', outTex);
+end
+cleanup = onCleanup(@() fclose(fid));
+
+fprintf(fid, '%% Auto-generated by drawFiguresEntrop (modelAgreementTables) — do not edit by hand.\n');
+fprintf(fid, '\\begin{sidewaystable}[htbp]\n');
+fprintf(fid, '\\centering\n');
+fprintf(fid, '\\caption{%s}\n', caption);
+fprintf(fid, '\\label{%s}\n', label);
+fprintf(fid, '\\begin{adjustbox}{max width=\\textheight}\n');
+fprintf(fid, '\\begin{tabular}{l%s}\n', repmat('r', 1, nModels));
+fprintf(fid, '\\toprule\n');
+fprintf(fid, 'Participant');
+for mi = 1:nModels
+  fprintf(fid, ' & %s', modelShort{mi});
+end
+fprintf(fid, ' \\\\\n\\midrule\n');
+
+for pp = 1:nP
+  fprintf(fid, '%s', char('A' + pp - 1));
+  miMap = mapModel(pp);
+  for mi = 1:nModels
+    v = values(mi, pp);
+    if ~isfinite(v)
+      cellStr = '---';
+    elseif asPercent
+      cellStr = sprintf('%.0f', round(100 * v));
+    else
+      cellStr = sprintf('%.2f', v);
+    end
+    if isfinite(miMap) && mi == miMap
+      fprintf(fid, ' & \\textbf{%s}', cellStr);
+    else
+      fprintf(fid, ' & %s', cellStr);
+    end
+  end
+  fprintf(fid, ' \\\\\n');
+end
+
+fprintf(fid, '\\bottomrule\n');
+fprintf(fid, '\\end{tabular}\n');
+fprintf(fid, '\\end{adjustbox}\n');
+fprintf(fid, '\\end{sidewaystable}\n');
+fprintf('Wrote %s\n', outTex);
+end
+
+function writeModelParticipantCsv(csvPath, values, modelShort)
+%WRITEMODELPARTICIPANTCSV  Participant x model values as CSV.
+nModels = numel(modelShort);
+nP = size(values, 2);
+hdr = [{'Participant'}, modelShort];
+rows = cell(nP, nModels + 1);
+for pp = 1:nP
+  rows{pp, 1} = char('A' + pp - 1);
+  for mi = 1:nModels
+    rows{pp, mi + 1} = values(mi, pp);
+  end
+end
+writecell([hdr; rows], csvPath);
+fprintf('Wrote %s\n', csvPath);
 end
