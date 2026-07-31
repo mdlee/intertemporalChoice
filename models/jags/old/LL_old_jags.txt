@@ -1,0 +1,12 @@
+# LL MODEL
+model{
+  for (i in 1:nParticipants){
+    alpha[i] ~ dunif(0.9, 1)
+    for (j in 1:nTrials){
+      # probability of choosing larger later
+      theta[i, j] = alpha[i]
+      # decision
+      decision[i, j] ~ dbern(theta[i, j])
+    }
+  }
+}

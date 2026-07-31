@@ -7,19 +7,22 @@
 % Output folders under results/:
 %   basic/                experimentalDesign, dataCounts
 %   latentMixture/        latentMixturePosteriors{,Half,Double},
+%                         latentMixturePosteriorsDescriptiveAdequacy,
 %                         latentMixturePriorRobustness
 %   descriptiveAdequacy/  mapModelPosteriorPredictive, allModelPosteriorPredictive,
-%                         mapModelForcedChoiceMatch, modelAgreementTables
+%                         misfitGallery, mapModelForcedChoiceMatch, modelAgreementTables
 %   parameterInferences/  parameterInferences, allParameterInferences,
-%                         mapModelParameterRobustness
+%                         mapModelParameterRobustness, parameterChange
 %
 % mapModelPosteriorPredictive caches a cutdown summary under models/storage/
 % (mapModelPosteriorPredictive_summary_*.mat). Set regenerateMapPostPredSummaries
 % inside that case to rebuild. allModelPosteriorPredictive caches
-% allModelPosteriorPredictive_summary_*.mat (PP + forced-choice match for every
-% model x participant). allParameterInferences writes one parameter-CI figure
-% per model (all participants). modelAgreementTables writes APA LaTeX tables
-% under manuscripts/ (forced-choice agreement + mean P(observed)).
+% allModelPosteriorPredictive_summary_*.mat (PP PMFs + mean P(obs) / match for
+% every model x participant). allParameterInferences writes one parameter-CI
+% figure per model (all participants). modelAgreementTables writes APA LaTeX
+% tables under manuscripts/ (mean P(observed decision); also writes CSVs);
+% latentMixturePosteriorsDescriptiveAdequacy overlays mean P(obs) on the
+% latent-mixture posterior bars (prefers the CSV from modelAgreementTables).
 % mapModelParameterRobustness and mapModelForcedChoiceMatch need half/double
 % cognitive fits from models/runHierarchicalExecutionPriorRobustness.m.
 %
@@ -28,7 +31,8 @@
 %
 % From another script (e.g. incremental MCMC draft loop), set
 %   analysisListOverride = {'mapModelParameterRobustness'};
-%   % or {'mapModelForcedChoiceMatch'} / both
+%   % or {'mapModelForcedChoiceMatch'} / {'misfitGallery'} / both
+%   misfitGalleryParticipants = {'D','H','S','V','E'}; % optional, Ex..DD
 %   drawFiguresEntropKeepWorkspace = true;
 % then run(this file) to refresh only those figures without clearing the caller.
 
@@ -38,12 +42,31 @@ overrideList = {};
 if exist('analysisListOverride', 'var') && ~isempty(analysisListOverride)
   overrideList = analysisListOverride;
 end
+% Prefer caller storageTag (including '') when set; else archived alpha prior.
+hasCallerStorageTag = exist('storageTag', 'var');
+callerStorageTag = '';
+if hasCallerStorageTag
+  callerStorageTag = storageTag;
+end
+% Optional 1x5 participant letters for misfitGallery (Ex,Hc,Hd,PD,DD).
+misfitGalleryParticipantsOverride = {};
+if exist('misfitGalleryParticipants', 'var') && ~isempty(misfitGalleryParticipants)
+  misfitGalleryParticipantsOverride = misfitGalleryParticipants;
+end
 if ~keepWorkspace
   savedOverrideList = overrideList;
-  clearvars -except savedOverrideList;
+  savedHasCallerStorageTag = hasCallerStorageTag;
+  savedCallerStorageTag = callerStorageTag;
+  savedMisfitGalleryParticipants = misfitGalleryParticipantsOverride;
+  clearvars -except savedOverrideList savedHasCallerStorageTag ...
+    savedCallerStorageTag savedMisfitGalleryParticipants;
   close all;
   overrideList = savedOverrideList;
-  clear savedOverrideList;
+  hasCallerStorageTag = savedHasCallerStorageTag;
+  callerStorageTag = savedCallerStorageTag;
+  misfitGalleryParticipantsOverride = savedMisfitGalleryParticipants;
+  clear savedOverrideList savedHasCallerStorageTag savedCallerStorageTag ...
+    savedMisfitGalleryParticipants;
 end
 
 printFigures = true;
@@ -52,19 +75,22 @@ if ~isempty(overrideList)
   analysisList = overrideList;
 else
   analysisList = {...
-    %'experimentalDesign', ...
-    %'dataCounts', ...
-    %'latentMixturePosteriors', ...
-    %'latentMixturePosteriorsHalf', ...
-    %'latentMixturePosteriorsDouble', ...
-    %'latentMixturePriorRobustness', ...
-    %'mapModelPosteriorPredictive', ...
-    %'allModelPosteriorPredictive', ...
-    %'mapModelForcedChoiceMatch', ...
-    %'modelAgreementTables', ...
-    %'mapModelParameterRobustness', ...
-    %'parameterInferences', ...
-    'allParameterInferences', ...
+    %'experimentalDesign'; ...
+    %'dataCounts'; ...
+    %'latentMixturePosteriors'; ...
+    %'latentMixturePosteriorsHalf'; ...
+    %'latentMixturePosteriorsDouble'; ...
+    %'latentMixturePosteriorsDescriptiveAdequacy'; ...
+    %'latentMixturePriorRobustness'; ...
+    %'mapModelPosteriorPredictive'; ...
+    %'allModelPosteriorPredictive'; ...
+    % 'misfitGallery'; ...
+    %'mapModelForcedChoiceMatch'; ...
+    %'modelAgreementTables'; ...
+    %'mapModelParameterRobustness'; ...
+    %'parameterInferences'; ...
+    'parameterChange'; ...
+    % 'allParameterInferences'; ...
     };
 end
 clear overrideList;
@@ -84,22 +110,41 @@ dataName = 'intertemporalChoice';
 engine = 'jags';
 mixtureName = 'latentMixtureHierarchicalPrecision_entrop';
 
+% storageTag: '' = canonical current fits (default for new alpha prior);
+%             'alphaPriorOld' = archived pre-dbeta(10,1) results from
+%             models/runAlphaPriorReruns.m (SS/LL/UT/mixtures). Cognitive
+%             models that were never re-run fall back to canonical mats.
+% Caller may set storageTag before run (including '') to override the default.
+if hasCallerStorageTag
+  storageTag = callerStorageTag;
+  clear hasCallerStorageTag callerStorageTag;
+else
+  clear hasCallerStorageTag callerStorageTag;
+  storageTag = 'alphaPriorOld';
+end
+storageTag = char(storageTag);
+fprintf('drawFiguresEntrop storageTag = ''%s'' (empty = canonical)\n', storageTag);
+
 % analysisName -> results subfolder
 outputSubdirByAnalysis = containers.Map( ...
   {'experimentalDesign', 'dataCounts', ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
-   'latentMixturePosteriorsDouble', 'latentMixturePriorRobustness', ...
+   'latentMixturePosteriorsDouble', 'latentMixturePosteriorsDescriptiveAdequacy', ...
+   'latentMixturePriorRobustness', ...
    'mapModelPosteriorPredictive', 'allModelPosteriorPredictive', ...
+   'misfitGallery', ...
    'mapModelForcedChoiceMatch', 'modelAgreementTables', ...
    'mapModelParameterRobustness', 'parameterInferences', ...
-   'allParameterInferences'}, ...
+   'allParameterInferences', 'parameterChange'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
    'latentMixture', 'latentMixture', ...
+   'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
+   'descriptiveAdequacy', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
    'parameterInferences', 'parameterInferences', ...
-   'parameterInferences'});
+   'parameterInferences', 'parameterInferences'});
 
 [data, d] = prepareIntertemporalChoiceData(dataName);
 nP = double(d.nParticipants);
@@ -114,8 +159,8 @@ end
 load pantoneColors pantone;
 problemClr = {pantone.Freesia; ...
    pantone.CelosiaOrange; ...
-   pantone.Paloma; ...
-   pantone.PlacidBlue};
+   pantone.PlacidBlue; ...
+   pantone.Sand};
 
 % Display order of original problem indices (1..nPairs).
 % Affects numbering in experimentalDesign and x-axis order in data / post. pred.
@@ -526,7 +571,7 @@ for analysisIdx = 1:numel(analysisList)
       yLim = [0 1];
       yTicks = [0 1];
 
-      mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixStem, dataName, engine));
+      mixPath = resolveStorageMatPath(storageDir, mixStem, dataName, engine, storageTag);
       if ~isfile(mixPath)
         error('Missing mixture chains: %s', mixPath);
       end
@@ -647,6 +692,219 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
+    case 'latentMixturePosteriorsDescriptiveAdequacy'
+      % Same 5x5 latent-mixture posterior bars as latentMixturePosteriors,
+      % plus mean P(observed decision) markers (0-1 on the same axis).
+      % MAP model: filled black circle + two-letter code above; others: open.
+
+      mixStem = mixtureName;
+      sgtitleStr = 'Latent mixture posteriors with mean P(observed)';
+
+      % graphics constants
+      fontSize = 10;
+      titleFontSize = 14;
+      titleFontName = 'Helvetica';
+      titleFontWeight = 'normal';
+      labelFontSize = 16;
+      nRows = 5;
+      nCols = 5;
+      figPos = [0.2 0.2 0.45 0.6];
+      barFace = [0.35 0.55 0.85];
+      barEdge = 'none';
+      barWidth = 0.85;
+      tickLength = 0.025;
+      raxesXShift = 0.01;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 1 0.8];
+      moveAxisShift = [0 0 0 0];
+      showTitles = true;
+      showXLabel = true;
+      showYLabel = true;
+      xLabelStr = 'Model';
+      yLabelStr = 'Posterior Probability / Mean P(Observed)';
+      supAxesPos = [];
+      supAxesBuf = 0.05;
+      supYLabelCloser = 0.025;
+      supXLabelCloser = 0.025;
+      xtickLabels = 1:nModels;
+      xTickLabelRotation = 90;
+      showXTickLabels = true;
+      showYTickLabels = true;
+      tickLabelsOuterOnly = true;
+      showGrid = false;
+      showSgtitle = false;
+      yLim = [0 1];
+      yTicks = [0 1];
+      markerSize = 4.5;
+      markerLineWidth = 0.8;
+      mapLabelOffset = 0.04;
+      mapLabelFontSize = 8;
+
+      agreeCsv = fullfile(resultsDir, 'descriptiveAdequacy', ...
+        'meanObservedDecisionProb_allModels.csv');
+      if ~isfile(agreeCsv)
+        error(['Missing mean P(observed) CSV: %s\n', ...
+          'Run analysis modelAgreementTables first.'], agreeCsv);
+      end
+      fprintf('Loading %s\n', agreeCsv);
+      matchProp = loadModelParticipantFitCsv(agreeCsv, modelShort, nP);
+
+      mixPath = resolveStorageMatPath(storageDir, mixStem, dataName, engine, storageTag);
+      if ~isfile(mixPath)
+        error('Missing mixture chains: %s', mixPath);
+      end
+      fprintf('Loading %s\n', mixPath);
+      mixS = load(mixPath, 'chains');
+      zMats = codaIndexedMatrices(mixS.chains, 'z');
+
+      F = figure; clf;
+      setFigure(F, figPos, '');
+      set(F, 'Color', 'w', 'renderer', 'painters');
+
+      contentPos = nan(nRows * nCols, 4);
+      for pp = 1:(nRows * nCols)
+        ax = subplot(nRows, nCols, pp);
+        if pp > nP || pp > numel(zMats)
+          axis(ax, 'off');
+          continue;
+        end
+
+        z = round(zMats{pp}(:));
+        z = z(isfinite(z) & z >= 1 & z <= nModels);
+        if isempty(z)
+          axis(ax, 'off');
+          if showTitles
+            ht = title(ax, sprintf('%s (no z)', participantLabels{pp}), ...
+              'FontName', titleFontName, ...
+              'FontSize', titleFontSize, ...
+              'FontWeight', titleFontWeight, ...
+              'HorizontalAlignment', 'left');
+            xl = xlim(ax);
+            tp = get(ht, 'Position');
+            set(ht, 'Position', [xl(1), tp(2), tp(3)]);
+          end
+          continue;
+        end
+
+        counts = histcounts(z, 0.5:(nModels + 0.5));
+        probs = counts / sum(counts);
+        [~, mapMi] = max(probs);
+
+        bar(ax, 1:nModels, probs, barWidth, ...
+          'FaceColor', barFace, 'EdgeColor', barEdge);
+        hold(ax, 'on');
+        for mi = 1:nModels
+          y = matchProp(mi, pp);
+          if ~isfinite(y)
+            continue;
+          end
+          if mi == mapMi
+            plot(ax, mi, y, 'o', ...
+              'MarkerSize', markerSize, ...
+              'MarkerFaceColor', 'k', ...
+              'MarkerEdgeColor', 'k', ...
+              'LineWidth', markerLineWidth);
+          else
+            plot(ax, mi, y, 'o', ...
+              'MarkerSize', markerSize, ...
+              'MarkerFaceColor', 'w', ...
+              'MarkerEdgeColor', 'k', ...
+              'LineWidth', markerLineWidth);
+          end
+        end
+        mapY = matchProp(mapMi, pp);
+        mapTop = max([mapY, probs(mapMi)]);
+        if isfinite(mapTop)
+          text(ax, mapMi, mapTop + mapLabelOffset, lower(modelShort{mapMi}), ...
+            'HorizontalAlignment', 'center', ...
+            'VerticalAlignment', 'bottom', ...
+            'FontSize', mapLabelFontSize, ...
+            'FontName', titleFontName, ...
+            'Color', 'k', ...
+            'Clipping', 'off');
+        end
+        hold(ax, 'off');
+
+        xlim(ax, [1 nModels]);
+        ylim(ax, yLim);
+        set(ax, ...
+          'TickDir', 'out', ...
+          'Box', 'off', ...
+          'FontSize', fontSize, ...
+          'XTick', xtickLabels, ...
+          'xticklabelrot', xTickLabelRotation, ...
+          'YTick', yTicks, ...
+          'TickLength', [tickLength 0], ...
+          'clipping', 'off');
+        onBottom = pp > (nRows - 1) * nCols;
+        onLeft = mod(pp, nCols) == 1;
+        showXHere = showXTickLabels && (~tickLabelsOuterOnly || onBottom);
+        showYHere = showYTickLabels && (~tickLabelsOuterOnly || onLeft);
+        if showXHere
+          set(ax, 'XTickLabel', lower(modelShort));
+        else
+          set(ax, 'XTickLabel', []);
+        end
+        if ~showYHere
+          set(ax, 'YTickLabel', []);
+        end
+        if showGrid
+          grid(ax, 'on');
+        end
+        moveAxis(gca, moveAxisScale, moveAxisShift);
+        contentPos(pp, :) = get(ax, 'Position');
+        [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+        set([axX axY], 'Tag', 'RaxesCopy');
+        title(axX, '');
+        title(axY, '');
+        if showTitles
+          ht = title(ax, participantLabels{pp}, ...
+            'FontName', titleFontName, ...
+            'FontSize', titleFontSize, ...
+            'FontWeight', titleFontWeight, ...
+            'HorizontalAlignment', 'left');
+          xl = xlim(ax);
+          tp = get(ht, 'Position');
+          set(ht, 'Position', [xl(1), tp(2), tp(3)]);
+        else
+          title(ax, '');
+        end
+      end
+
+      if isempty(supAxesPos)
+        keep = all(isfinite(contentPos), 2);
+        pos = contentPos(keep, :);
+        leftMin = min(pos(:, 1));
+        bottomMin = min(pos(:, 2));
+        leftMax = max(pos(:, 1) + pos(:, 3));
+        bottomMax = max(pos(:, 2) + pos(:, 4));
+        supAxesPos = [ ...
+          leftMin - supAxesBuf - raxesYShift, ...
+          bottomMin - supAxesBuf - raxesXShift, ...
+          (leftMax - leftMin) + 2 * supAxesBuf + raxesYShift, ...
+          (bottomMax - bottomMin) + 2 * supAxesBuf + raxesXShift];
+      end
+
+      if showXLabel
+        [~, Hx] = suplabel(xLabelStr, 'x', supAxesPos);
+        hxPos = get(Hx, 'Position');
+        hxPos(2) = hxPos(2) + supXLabelCloser;
+        set(Hx, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hxPos);
+      end
+      if showYLabel
+        [~, Hy] = suplabel(yLabelStr, 'y', supAxesPos);
+        hyPos = get(Hy, 'Position');
+        hyPos(1) = hyPos(1) + supYLabelCloser;
+        set(Hy, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hyPos);
+      end
+
+      if showSgtitle
+        sgtitle(sgtitleStr, 'FontWeight', 'normal', 'FontSize', titleFontSize + 2);
+      end
+
+    %% ================================================================
     case 'latentMixturePriorRobustness'
       % Console MAP stability under half / double priors, plus scatter of
       % posterior model probability (orig vs half / orig vs double) for all
@@ -659,7 +917,7 @@ for analysisIdx = 1:numel(analysisList)
       mixLabels = {'original', 'half', 'double'};
       Pcell = cell(1, 3);
       for k = 1:3
-        mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixStems{k}, dataName, engine));
+        mixPath = resolveStorageMatPath(storageDir, mixStems{k}, dataName, engine, storageTag);
         if ~isfile(mixPath)
           error('Missing mixture chains (%s): %s', mixLabels{k}, mixPath);
         end
@@ -892,7 +1150,7 @@ for analysisIdx = 1:numel(analysisList)
       moveAxisShift = [0 0 0 0];
       showTitles = true;
       showModelInTitle = true;
-      showMatchInTitle = true; % forced-choice agreement % (not posterior model prob)
+      showMatchInTitle = true; % mean P(observed decision) % in panel titles
       choiceThreshold = 0.5;
       modelTitleFontSize = 14;
       modelTitleFontName = 'Helvetica';
@@ -921,7 +1179,7 @@ for analysisIdx = 1:numel(analysisList)
       regenerateMapPostPredSummaries = false;
       regenerateMapForcedChoiceSummaries = false;
 
-      mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      mixPath = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
       if ~isfile(mixPath)
         error('Missing mixture chains: %s', mixPath);
       end
@@ -930,7 +1188,7 @@ for analysisIdx = 1:numel(analysisList)
 
       [mapModel, ~, pmfPadByParticipant, rebuilt] = loadOrBuildMapPostPredSummary( ...
         summaryPath, regenerateMapPostPredSummaries, ...
-        mixPath, storageDir, dataName, engine, ...
+        mixPath, storageDir, dataName, engine, storageTag, ...
         mixtureName, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
         data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed);
       if rebuilt
@@ -942,15 +1200,30 @@ for analysisIdx = 1:numel(analysisList)
       matchSummaryPath = fullfile(storageDir, ...
         sprintf('mapModelForcedChoiceMatch_summary_%s_%s_%s.mat', ...
           mixtureName, dataName, engine));
-      [~, ~, matchProp, ~, matchRebuilt] = loadOrBuildMapForcedChoiceMatchSummary( ...
+      [~, ~, meanObsProp, ~, matchRebuilt] = loadOrBuildMapForcedChoiceMatchSummary( ...
         matchSummaryPath, regenerateMapForcedChoiceSummaries, ...
-        mixPath, storageDir, dataName, engine, ...
+        mixPath, storageDir, dataName, engine, storageTag, ...
         mixtureName, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
         data, d, nP, nT, nModels, choiceThreshold);
       if matchRebuilt
-        fprintf('Wrote forced-choice match summary %s\n', matchSummaryPath);
+        fprintf('Wrote MAP mean-P(obs) summary %s\n', matchSummaryPath);
       else
-        fprintf('Loaded forced-choice match summary %s\n', matchSummaryPath);
+        fprintf('Loaded MAP mean-P(obs) summary %s\n', matchSummaryPath);
+      end
+      % Prefer CSV mean P(obs) when available (same metric as tables / mixture fig).
+      meanObsCsv = fullfile(figuresDir, 'meanObservedDecisionProb_allModels.csv');
+      if isfile(meanObsCsv)
+        meanObsByModel = loadModelParticipantFitCsv(meanObsCsv, modelShort, nP);
+        matchProp = nan(1, nP);
+        for pp = 1:nP
+          mi = mapModel(pp);
+          if isfinite(mi) && mi >= 1 && mi <= nModels
+            matchProp(pp) = meanObsByModel(mi, pp);
+          end
+        end
+        fprintf('Using mean P(obs) from %s for MAP panel titles\n', meanObsCsv);
+      else
+        matchProp = meanObsProp;
       end
 
       F = figure; clf;
@@ -1166,7 +1439,7 @@ for analysisIdx = 1:numel(analysisList)
     case 'allModelPosteriorPredictive'
       % One 5x5 figure per model (8 cognitive + 3 contaminants): posterior
       % predictive counts for that model applied to all participants. Panel
-      % labels show forced-choice agreement for that model.
+      % labels show mean P(observed decision) for that model.
 
       % graphics constants (match mapModelPosteriorPredictive)
       fontSize = 14;
@@ -1213,12 +1486,12 @@ for analysisIdx = 1:numel(analysisList)
       rngSeed = 42;
       regenerateAllModelPostPredSummaries = false;
 
-      summaryPath = fullfile(storageDir, ...
-        sprintf('allModelPosteriorPredictive_summary_%s_%s.mat', dataName, engine));
+      summaryPath = storageMatPath(storageDir, ...
+        'allModelPosteriorPredictive_summary', dataName, engine, storageTag);
 
       [pmfPadByModel, matchPropByModel, rebuilt] = loadOrBuildAllModelPostPredSummary( ...
         summaryPath, regenerateAllModelPostPredSummaries, ...
-        storageDir, dataName, engine, ...
+        storageDir, dataName, engine, storageTag, ...
         cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
         data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed, ...
         choiceThreshold);
@@ -1226,6 +1499,11 @@ for analysisIdx = 1:numel(analysisList)
         fprintf('Wrote all-model post-pred summary %s\n', summaryPath);
       else
         fprintf('Loaded all-model post-pred summary %s\n', summaryPath);
+      end
+      meanObsCsv = fullfile(figuresDir, 'meanObservedDecisionProb_allModels.csv');
+      if isfile(meanObsCsv)
+        matchPropByModel = loadModelParticipantFitCsv(meanObsCsv, modelShort, nP);
+        fprintf('Using mean P(obs) from %s for panel titles\n', meanObsCsv);
       end
 
       for mi = 1:nModels
@@ -1444,12 +1722,335 @@ for analysisIdx = 1:numel(analysisList)
       saveFigure = false; % already saved per-model above (or interactive)
 
     %% ================================================================
-    case 'modelAgreementTables'
-      % APA LaTeX tables (manuscripts/): forced-choice agreement and mean
-      % P(observed decision) for every model x participant. Bold = MAP model.
-      % Forced choice: mean P(LL) >= .5 => LL, else SS.
+    case 'misfitGallery'
+      % 1x5: diagnostic posterior-predictive misfits for Ex, Hc, Hd, PD, DD.
+      % Each panel is one model applied to one noncontaminant participant
+      % chosen to illustrate how that model fails (override via
+      % misfitGalleryParticipants = {'D','H','S','V','E'} before running).
 
-      choiceThreshold = 0.5; % >= threshold => LL (so Gu at .5 is determinate)
+      % graphics constants (match allModelPosteriorPredictive tiles)
+      fontSize = 24;
+      titleFontSize = 24;
+      titleFontName = 'Helvetica';
+      titleFontWeight = 'normal';
+      labelFontSize = 28;
+      nRows = 1;
+      nCols = 5;
+      figPos = [0.1 0.35 0.8 0.22];
+      nPredSamples = 4000;
+      probDrawMin = 1 / max(500, nPredSamples);
+      tileLineWidth = 0.65;
+      obsEdgeDarken = 0.35;
+      obsLineWidth = 1.5;
+      minObsSide = 0.36;
+      predFaceClr = [1 1 1];
+      predEdgeClr = 0.55 * [1 1 1];
+      tickLength = 0.02;
+      raxesXShift = 0.03;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 1 0.675];
+      moveAxisShift = [0 0.175 0 0];
+      showTitles = true;
+      choiceThreshold = 0.5;
+      modelTitleFontSize = 24;
+      modelTitleFontName = 'Helvetica';
+      modelTitleFontWeight = 'normal';
+      titleYNorm = 1.06;
+      showXLabel = true;
+      showYLabel = true;
+      xLabelStr = 'Problem';
+      yLabelStr = 'Count LL';
+      supAxesPos = [];
+      supAxesBuf = 0.05;
+      supYLabelCloser = 0.025;
+      supXLabelCloser = -0.1;
+      showXTickLabels = true;
+      showYTickLabels = true;
+      tickLabelsOuterOnly = true;
+      sharedYLim = true;
+      showGrid = false;
+      showSgtitle = false;
+      sgtitleStr = 'Diagnostic model misfits';
+      rngSeed = 42;
+      regenerateAllModelPostPredSummaries = false;
+
+      % Models shown left-to-right (indices into modelShort / summary).
+      misfitModels = [1 2 3 4 5]; % Ex, Hc, Hd, PD, DD
+      % Default exemplars (noncontaminant D–X): interval-effect participants
+      % for alternative-based models; large-vs-small reward contrast for PD;
+      % strong DD mean-P(obs) / predictive gap for DD. Overwrite with
+      % misfitGalleryParticipants before calling drawFiguresEntrop.
+      misfitParticipants = {'E', 'E', 'E', 'K', 'H'};
+      if exist('misfitGalleryParticipantsOverride', 'var') && ...
+          ~isempty(misfitGalleryParticipantsOverride)
+        misfitParticipants = misfitGalleryParticipantsOverride;
+      elseif exist('misfitGalleryParticipants', 'var') && ...
+          ~isempty(misfitGalleryParticipants)
+        misfitParticipants = misfitGalleryParticipants;
+      end
+      if ischar(misfitParticipants) || isstring(misfitParticipants)
+        misfitParticipants = cellstr(misfitParticipants);
+      end
+      if numel(misfitParticipants) ~= numel(misfitModels)
+        error('misfitGalleryParticipants must have %d entries (got %d)', ...
+          numel(misfitModels), numel(misfitParticipants));
+      end
+
+      panelPp = nan(1, numel(misfitParticipants));
+      for k = 1:numel(misfitParticipants)
+        lab = upper(strtrim(char(misfitParticipants{k})));
+        idx = find(strcmp(participantLabels, lab), 1);
+        if isempty(idx)
+          error('misfitGallery: unknown participant "%s"', lab);
+        end
+        panelPp(k) = idx;
+      end
+      fprintf('misfitGallery participants:');
+      for k = 1:numel(misfitModels)
+        fprintf(' %s→%s', modelShort{misfitModels(k)}, participantLabels{panelPp(k)});
+      end
+      fprintf('\n');
+
+      summaryPath = storageMatPath(storageDir, ...
+        'allModelPosteriorPredictive_summary', dataName, engine, storageTag);
+
+      [pmfPadByModel, matchPropByModel, rebuilt] = loadOrBuildAllModelPostPredSummary( ...
+        summaryPath, regenerateAllModelPostPredSummaries, ...
+        storageDir, dataName, engine, storageTag, ...
+        cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
+        data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed, ...
+        choiceThreshold);
+      if rebuilt
+        fprintf('Wrote all-model post-pred summary %s\n', summaryPath);
+      else
+        fprintf('Loaded all-model post-pred summary %s\n', summaryPath);
+      end
+      meanObsCsv = fullfile(figuresDir, 'meanObservedDecisionProb_allModels.csv');
+      if isfile(meanObsCsv)
+        matchPropByModel = loadModelParticipantFitCsv(meanObsCsv, modelShort, nP);
+        fprintf('Using mean P(obs) from %s for misfit panel titles\n', meanObsCsv);
+      end
+
+      F = figure; clf;
+      setFigure(F, figPos, '');
+      set(F, 'Color', 'w', 'renderer', 'painters');
+
+      contentPos = nan(nRows * nCols, 4);
+      for k = 1:(nRows * nCols)
+        ax = subplot(nRows, nCols, k);
+        if k > numel(misfitModels)
+          axis(ax, 'off');
+          continue;
+        end
+
+        mi = misfitModels(k);
+        pp = panelPp(k);
+        pmfPadByParticipant = pmfPadByModel{mi};
+        matchProp = matchPropByModel(mi, :);
+
+        if isempty(pmfPadByParticipant) || isempty(pmfPadByParticipant{pp})
+          text(ax, 0.5, 0.5, 'No fit', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontSize', fontSize);
+          if showTitles
+            text(ax, 0, titleYNorm, participantLabels{pp}, ...
+              'Units', 'normalized', ...
+              'HorizontalAlignment', 'left', ...
+              'VerticalAlignment', 'bottom', ...
+              'FontName', titleFontName, ...
+              'FontSize', titleFontSize, ...
+              'FontWeight', titleFontWeight, ...
+              'Interpreter', 'none', ...
+              'Clipping', 'off');
+            text(ax, 1, titleYNorm, lower(modelShort{mi}), ...
+              'Units', 'normalized', ...
+              'HorizontalAlignment', 'right', ...
+              'VerticalAlignment', 'bottom', ...
+              'FontName', modelTitleFontName, ...
+              'FontSize', modelTitleFontSize, ...
+              'FontWeight', modelTitleFontWeight, ...
+              'Interpreter', 'none', ...
+              'Clipping', 'off');
+          end
+          contentPos(k, :) = get(ax, 'Position');
+          continue;
+        end
+
+        pmfPad = pmfPadByParticipant{pp};
+
+        if sharedYLim
+          yHi = maxKGlobal;
+        else
+          yHi = maxKByPar(pp);
+        end
+
+        if isempty(pmfPad) || all(isnan(pmfPad(:)), 'all')
+          text(ax, 0.5, 0.5, 'No \theta', 'Units', 'normalized', ...
+            'HorizontalAlignment', 'center', 'FontSize', fontSize);
+        else
+          maxProb = max(pmfPad(:), [], 'omitnan');
+          if ~(maxProb > 0)
+            text(ax, 0.5, 0.5, 'No mass', 'Units', 'normalized', ...
+              'HorizontalAlignment', 'center', 'FontSize', fontSize);
+          else
+            scale = 0.92 / sqrt(maxProb);
+            hold(ax, 'on');
+
+            obsRow = obsCntMat(pp, :);
+            flat = pmfPad(:);
+            [sortedProb, ord] = sort(flat, 'ascend', 'ComparisonMethod', 'real');
+            [pjVec, kIdxVec] = ind2sub(size(pmfPad), ord);
+            for z = 1:numel(sortedProb)
+              prob = sortedProb(z);
+              if isnan(prob) || prob < probDrawMin
+                continue;
+              end
+              pj = pjVec(z);
+              kk = kIdxVec(z) - 1;
+              nk = nTpMat(pp, pj);
+              if nk <= 0 || kk > nk || kk < 0
+                continue;
+              end
+              dispIdx = displayNumber(pj);
+              side = min(scale * sqrt(prob), 0.92);
+              ko = obsRow(pj);
+              isObs = isfinite(ko) && round(ko) == kk;
+              if isObs
+                continue;
+              end
+              rectangle(ax, 'Position', [dispIdx - side / 2, kk - side / 2, side, side], ...
+                'FaceColor', predFaceClr, 'EdgeColor', predEdgeClr, 'LineWidth', tileLineWidth);
+            end
+
+            for dispIdx = 1:nPairs
+              pj = problemOrder(dispIdx);
+              nk = nTpMat(pp, pj);
+              if nk <= 0
+                continue;
+              end
+              ko = obsRow(pj);
+              if ~isfinite(ko)
+                continue;
+              end
+              ko = round(ko);
+              if ko < 0 || ko > nk
+                continue;
+              end
+              prob = pmfPad(pj, ko + 1);
+              if isnan(prob) || prob < 0
+                prob = 0;
+              end
+              rawSide = min(scale * sqrt(max(prob, eps)), 0.92);
+              if prob < probDrawMin
+                side = min(max(rawSide, minObsSide), 0.92);
+              else
+                side = rawSide;
+              end
+              face = problemClr{pairTypeByProblem(pj)};
+              edge = max(0, face * (1 - obsEdgeDarken));
+              rectangle(ax, 'Position', [dispIdx - side / 2, ko - side / 2, side, side], ...
+                'FaceColor', face, 'EdgeColor', edge, 'LineWidth', obsLineWidth);
+            end
+            hold(ax, 'off');
+          end
+        end
+
+        xlim(ax, [1 nPairs]);
+        ylim(ax, [0 yHi]);
+        set(ax, ...
+          'TickDir', 'out', ...
+          'Box', 'off', ...
+          'FontSize', fontSize, ...
+          'XTick', problemXtickLabels, ...
+          'xticklabelrot', 0, ...
+          'YTick', [0 yHi], ...
+          'TickLength', [tickLength 0], ...
+          'clipping', 'off');
+        onBottom = true; % single row
+        onLeft = k == 1;
+        showXHere = showXTickLabels && (~tickLabelsOuterOnly || onBottom);
+        showYHere = showYTickLabels && (~tickLabelsOuterOnly || onLeft);
+        if ~showXHere
+          set(ax, 'XTickLabel', []);
+        end
+        if ~showYHere
+          set(ax, 'YTickLabel', []);
+        end
+        if showGrid
+          grid(ax, 'on');
+        end
+        moveAxis(gca, moveAxisScale, moveAxisShift);
+        contentPos(k, :) = get(ax, 'Position');
+        [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+        set([axX axY], 'Tag', 'RaxesCopy');
+        title(axX, '');
+        title(axY, '');
+        title(ax, '');
+        if showTitles
+          text(ax, 0, titleYNorm, participantLabels{pp}, ...
+            'Units', 'normalized', ...
+            'HorizontalAlignment', 'left', ...
+            'VerticalAlignment', 'bottom', ...
+            'FontName', titleFontName, ...
+            'FontSize', titleFontSize, ...
+            'FontWeight', titleFontWeight, ...
+            'Interpreter', 'none', ...
+            'Clipping', 'off');
+          modelStr = lower(modelShort{mi});
+          if isfinite(matchProp(pp))
+            modelStr = sprintf('%s[%d%%]', modelStr, round(100 * matchProp(pp)));
+          end
+          text(ax, 1, titleYNorm, modelStr, ...
+            'Units', 'normalized', ...
+            'HorizontalAlignment', 'right', ...
+            'VerticalAlignment', 'bottom', ...
+            'FontName', modelTitleFontName, ...
+            'FontSize', modelTitleFontSize, ...
+            'FontWeight', modelTitleFontWeight, ...
+            'Interpreter', 'none', ...
+            'Clipping', 'off');
+        end
+      end
+
+      if isempty(supAxesPos)
+        keep = all(isfinite(contentPos), 2);
+        pos = contentPos(keep, :);
+        leftMin = min(pos(:, 1));
+        bottomMin = min(pos(:, 2));
+        leftMax = max(pos(:, 1) + pos(:, 3));
+        bottomMax = max(pos(:, 2) + pos(:, 4));
+        supAxesPos = [ ...
+          leftMin - supAxesBuf - raxesYShift, ...
+          bottomMin - supAxesBuf - raxesXShift, ...
+          (leftMax - leftMin) + 2 * supAxesBuf + raxesYShift, ...
+          (bottomMax - bottomMin) + 2 * supAxesBuf + raxesXShift];
+      end
+
+      if showXLabel
+        [~, Hx] = suplabel(xLabelStr, 'x', supAxesPos);
+        hxPos = get(Hx, 'Position');
+        hxPos(2) = hxPos(2) + supXLabelCloser;
+        set(Hx, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hxPos);
+      end
+      if showYLabel
+        [~, Hy] = suplabel(yLabelStr, 'y', supAxesPos);
+        hyPos = get(Hy, 'Position');
+        hyPos(1) = hyPos(1) + supYLabelCloser;
+        set(Hy, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hyPos);
+      end
+
+      if showSgtitle
+        sgtitle(sgtitleStr, 'FontWeight', 'normal', 'FontSize', titleFontSize + 2);
+      end
+
+    %% ================================================================
+    case 'modelAgreementTables'
+      % APA LaTeX tables (manuscripts/): mean P(observed decision) for every
+      % model x participant. Bold = MAP model. Also writes forced-choice and
+      % mean-P(obs) CSVs under results/descriptiveAdequacy/.
+
+      choiceThreshold = 0.5; % used only for optional forced-choice CSV
       manuscriptsDir = fullfile(resultsDir, '..', 'manuscripts');
 
       mapSummaryPath = fullfile(storageDir, ...
@@ -1478,7 +2079,7 @@ for analysisIdx = 1:numel(analysisList)
         else
           stem = contaminantStems{mi - 8};
         end
-        fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+        fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
         if ~isfile(fpath)
           warning('Missing %s', fpath);
           continue;
@@ -1522,6 +2123,18 @@ for analysisIdx = 1:numel(analysisList)
         'for that participant in the latent-mixture analysis.'];
 
       writeModelParticipantTable( ...
+        fullfile(manuscriptsDir, 'meanObservedDecisionProbTable.tex'), ...
+        meanObsProb, mapModelRow, modelShort, ...
+        ['Mean posterior predictive probability of the observed decision ', ...
+         '(percentage) for each model and participant. For each trial, the ', ...
+         'probability assigned to the participant''s chosen alternative was taken ', ...
+         'from the model''s posterior mean $P(\mathrm{LL})$, and these trial-level ', ...
+         'probabilities were averaged. ', abbrevNote], ...
+        'tab:meanObservedDecisionProb', true);
+
+      % Keep forced-choice CSV/table available in the repo, but the manuscript
+      % uses mean P(obs) as the primary descriptive-adequacy summary.
+      writeModelParticipantTable( ...
         fullfile(manuscriptsDir, 'forcedChoiceAgreementTable.tex'), ...
         matchProp, mapModelRow, modelShort, ...
         ['Forced-choice posterior predictive agreement (percentage of trials) ', ...
@@ -1531,16 +2144,6 @@ for analysisIdx = 1:numel(analysisList)
          'agreement is the proportion of trials matching the participant''s ', ...
          'observed choice. ', abbrevNote], ...
         'tab:forcedChoiceAgreement', true);
-
-      writeModelParticipantTable( ...
-        fullfile(manuscriptsDir, 'meanObservedDecisionProbTable.tex'), ...
-        meanObsProb, mapModelRow, modelShort, ...
-        ['Mean posterior predictive probability of the observed decision ', ...
-         '(percentage) for each model and participant. For each trial, the ', ...
-         'probability assigned to the participant''s chosen alternative was taken ', ...
-         'from the model''s posterior mean $P(\mathrm{LL})$, and these trial-level ', ...
-         'probabilities were averaged. ', abbrevNote], ...
-        'tab:meanObservedDecisionProb', true);
 
       writeModelParticipantCsv( ...
         fullfile(figuresDir, 'forcedChoiceAgreement_allModels.csv'), ...
@@ -1553,18 +2156,17 @@ for analysisIdx = 1:numel(analysisList)
 
     %% ================================================================
     case 'mapModelForcedChoiceMatch'
-      % Forced-choice agreement for each participant's original-MAP model,
+      % Mean P(observed decision) for each participant's original-MAP model,
       % comparing that same model's fits under original / half / double mu
       % priors (ignores MAP changes under half/double). Cognitive half/double
       % fits: runHierarchicalExecutionPriorRobustness.
       % Console report + two-panel scatter (original vs half / original vs double).
 
       % graphics / analysis constants
-      choiceThreshold = 0.5; % mean theta > threshold => LL; < => SS; == excluded
-      % Cutdown summary of match rates (full chain mats kept).
+      choiceThreshold = 0.5; % retained for cache compatibility with older summaries
       regenerateMapForcedChoiceSummaries = false;
 
-      mixPathOrig = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      mixPathOrig = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
       if ~isfile(mixPathOrig)
         error('Missing mixture chains: %s', mixPathOrig);
       end
@@ -1593,50 +2195,49 @@ for analysisIdx = 1:numel(analysisList)
           sprintf('mapModelForcedChoiceMatch_summary_%s_%s_%s.mat', ...
             fitTag, dataName, engine));
 
-        [mapModelK, mapProbK, matchPropK, ~, rebuilt] = ...
+        [mapModelK, mapProbK, meanObsK, ~, rebuilt] = ...
           loadOrBuildMapForcedChoiceMatchSummary( ...
             summaryPath, regenerateMapForcedChoiceSummaries, ...
-            mixPathOrig, storageDir, dataName, engine, ...
+            mixPathOrig, storageDir, dataName, engine, storageTag, ...
             fitTag, cogStems, contaminantStems, cognitiveJagsNames, modelLong, ...
             data, d, nP, nT, nModels, choiceThreshold);
         if rebuilt
-          fprintf('Wrote forced-choice match summary (%s) %s\n', priorLabel, summaryPath);
+          fprintf('Wrote MAP mean-P(obs) summary (%s) %s\n', priorLabel, summaryPath);
         else
-          fprintf('Loaded forced-choice match summary (%s) %s\n', priorLabel, summaryPath);
+          fprintf('Loaded MAP mean-P(obs) summary (%s) %s\n', priorLabel, summaryPath);
         end
 
-        fprintf('\nMAP forced-choice match — %s priors (theta > %.2f => LL, < => SS):\n', ...
-          priorLabel, choiceThreshold);
+        fprintf('\nMAP mean P(observed) — %s priors:\n', priorLabel);
         fprintf('  (MAP identity from original mixture; params from %s hierarchical fits)\n', ...
           lower(priorLabel));
         for pp = 1:nP
           mi = mapModelK(pp);
-          if isfinite(mi) && mi >= 1 && mi <= nModels && isfinite(matchPropK(pp))
-            fprintf('  %s  %s[%.2f]  match=%.3f\n', ...
-              participantLabels{pp}, modelShort{mi}, mapProbK(pp), matchPropK(pp));
+          if isfinite(mi) && mi >= 1 && mi <= nModels && isfinite(meanObsK(pp))
+            fprintf('  %s  %s[%.2f]  meanP(obs)=%.3f\n', ...
+              participantLabels{pp}, modelShort{mi}, mapProbK(pp), meanObsK(pp));
           else
             fprintf('  %s  (no MAP fit)\n', participantLabels{pp});
           end
         end
-        overallK = mean(matchPropK(isfinite(matchPropK)));
-        nReady = sum(isfinite(matchPropK));
-        fprintf('  Overall mean match = %.3f (%d / %d participants with fits ready)\n', ...
+        overallK = mean(meanObsK(isfinite(meanObsK)));
+        nReady = sum(isfinite(meanObsK));
+        fprintf('  Overall mean P(obs) = %.3f (%d / %d participants with fits ready)\n', ...
           overallK, nReady, nP);
 
-        matchByMix{kPrior} = matchPropK;
+        matchByMix{kPrior} = meanObsK;
         mapModelByMix{kPrior} = mapModelK;
         mapProbByMix{kPrior} = mapProbK;
         overallByMix(kPrior) = overallK;
       end
 
-      fprintf('\nForced-choice agreement summary (same original-MAP model across priors):\n');
+      fprintf('\nMean P(observed) summary (same original-MAP model across priors):\n');
       for kPrior = 1:nPrior
-        fprintf('  %-8s overall mean match = %.3f\n', ...
+        fprintf('  %-8s overall mean P(obs) = %.3f\n', ...
           [priorPack{kPrior, 1} ':'], overallByMix(kPrior));
       end
       fprintf('\n');
 
-      % Two-panel scatter: original vs half / original vs double (% agreement)
+      % Two-panel scatter: original vs half / original vs double (mean P(obs))
       fontSize = 14;
       labelFontSize = 16;
       titleFontSize = 14;
@@ -1769,7 +2370,7 @@ for analysisIdx = 1:numel(analysisList)
         };
 
       % MAP model under original mixture priors only
-      mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      mixPath = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
       if ~isfile(mixPath)
         error('Missing mixture chains: %s', mixPath);
       end
@@ -1805,25 +2406,25 @@ for analysisIdx = 1:numel(analysisList)
         stemOrig = cognitiveStems{mi};
         stemHalf = cognitiveMuPrecStem(stemOrig, 'Half');
         stemDouble = cognitiveMuPrecStem(stemOrig, 'Double');
-        hasHalf = hierarchicalStemAvailable(storageDir, stemHalf, dataName, engine);
-        hasDouble = hierarchicalStemAvailable(storageDir, stemDouble, dataName, engine);
+        hasHalf = hierarchicalStemAvailable(storageDir, stemHalf, dataName, engine, storageTag);
+        hasDouble = hierarchicalStemAvailable(storageDir, stemDouble, dataName, engine, storageTag);
         if ~(hasHalf || hasDouble)
           fprintf('Skipping %s — no half/double fit yet\n', modelShort{mi});
           continue;
         end
-        if ~hierarchicalStemAvailable(storageDir, stemOrig, dataName, engine)
+        if ~hierarchicalStemAvailable(storageDir, stemOrig, dataName, engine, storageTag)
           fprintf('Skipping %s — missing original fit\n', modelShort{mi});
           continue;
         end
-        chainsOrig{mi} = loadHierarchicalChains(storageDir, stemOrig, dataName, engine);
+        chainsOrig{mi} = loadHierarchicalChains(storageDir, stemOrig, dataName, engine, storageTag);
         if hasHalf
-          chainsHalf{mi} = loadHierarchicalChains(storageDir, stemHalf, dataName, engine);
+          chainsHalf{mi} = loadHierarchicalChains(storageDir, stemHalf, dataName, engine, storageTag);
         else
           fprintf('  %s: half fit not ready — half panel points will be omitted\n', ...
             modelShort{mi});
         end
         if hasDouble
-          chainsDouble{mi} = loadHierarchicalChains(storageDir, stemDouble, dataName, engine);
+          chainsDouble{mi} = loadHierarchicalChains(storageDir, stemDouble, dataName, engine, storageTag);
         else
           fprintf('  %s: double fit not ready — double panel points will be omitted\n', ...
             modelShort{mi});
@@ -2064,7 +2665,7 @@ for analysisIdx = 1:numel(analysisList)
         if nPar == 0
           continue;
         end
-        fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', modelStems{mi}, dataName, engine));
+        fpath = resolveStorageMatPath(storageDir, modelStems{mi}, dataName, engine, storageTag);
         if ~isfile(fpath)
           error('Missing model chains for %s: %s', modelShort{mi}, fpath);
         end
@@ -2082,7 +2683,7 @@ for analysisIdx = 1:numel(analysisList)
         clear S;
       end
 
-      mixPath = fullfile(storageDir, sprintf('%s_%s_%s.mat', mixtureName, dataName, engine));
+      mixPath = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
       if ~isfile(mixPath)
         error('Missing mixture chains: %s', mixPath);
       end
@@ -2205,6 +2806,273 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
+    case 'parameterChange'
+      % UT (left) and IT (right): each row one parameter; x = MAP users of
+      % that model in participant order; mean + 95% CI with means connected.
+
+      fontSize = 10;
+      tickLabelFontSize = fontSize + 1;
+      titleFontSize = 14;
+      titleFontName = 'Helvetica';
+      titleFontWeight = 'normal';
+      labelFontSize = 16;
+      paramLabelFontSize = 12;
+      figPos = [0.2 0.2 0.5 0.7];
+      CIbounds = [25 75];
+      markerFace = pantone.ClassicBlue;
+      markerSize = 5;
+      ciLineWidth = 1.2;
+      meanLineWidth = 1.0;
+      tickLength = 0.02;
+      raxesXShift = 0.01;
+      raxesYShift = 0.01;
+      moveAxisScale = [1 1 1 0.85];
+      moveAxisShift = [0 0.01 0 0];
+      yLimFixed = []; % [] = auto per panel; e.g. [-5 10] to match parameterInferences
+      yPadFrac = 0.12;
+      meanLabelFontSize = 6;
+      meanLabelXOffset = 0.22; % right of marker (participants spaced by 1)
+      meanLabelYOffsetFrac = 0.06; % of ylim range, above the mean
+      meanLabelXLimPad = 0.35; % extra right xlim so last labels aren't clipped
+      showZeroLine = true;
+      zeroLineColor = [0.7 0.7 0.7];
+      showXTickLabelsOuterOnly = true; % bottom row only
+      showYTickLabelsOuterOnly = false;
+      showModelColumnTitles = true;
+      modelTitleYNorm = 1.08;
+      xTickLabelRotation = 0;
+      showXLabel = true;
+      showYLabel = false; % row labels are the parameter names
+      xLabelStr = 'Participant';
+      yLabelStr = 'Parameter Value';
+      supAxesPos = [];
+      supAxesBuf = 0.04;
+      supYLabelCloser = 0.02;
+      supXLabelCloser = 0.02;
+
+      modelIdx = [7 8]; % UT, IT
+      parameterNamesByModel = { ...
+        {'gamma', 'kappa', 'tau', 'vartheta', 'eta', 'w'}; ... % UT
+        {'betaRA', 'betaRR', 'betaTA', 'betaTR', 'beta0', 'w'} ... % IT
+        };
+      nRows = max(cellfun(@numel, parameterNamesByModel));
+      nCols = numel(modelIdx);
+
+      mixPath = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
+      if ~isfile(mixPath)
+        error('Missing mixture chains: %s', mixPath);
+      end
+      fprintf('Loading MAP labels from %s\n', mixPath);
+      mixS = load(mixPath, 'chains');
+      P = posteriorModelProbsFromZ(mixS.chains, nP, nModels);
+      [~, mapModel] = max(P, [], 1);
+      clear mixS P;
+
+      mnByModel = cell(1, nCols);
+      ciByModel = cell(1, nCols);
+      ppsByModel = cell(1, nCols);
+      for col = 1:nCols
+        mi = modelIdx(col);
+        pNames = parameterNamesByModel{col};
+        nPar = numel(pNames);
+        pps = find(mapModel == mi);
+        ppsByModel{col} = pps(:)';
+        fprintf('%s MAP participants (%d): %s\n', modelShort{mi}, numel(pps), ...
+          strjoin(participantLabels(pps), ', '));
+
+        mnByModel{col} = nan(numel(pps), nPar);
+        ciByModel{col} = nan(numel(pps), nPar, 2);
+        if isempty(pps)
+          continue;
+        end
+        fpath = resolveStorageMatPath(storageDir, cognitiveStems{mi}, dataName, engine, storageTag);
+        if ~isfile(fpath)
+          error('Missing model chains for %s: %s', modelShort{mi}, fpath);
+        end
+        fprintf('Loading %s\n', fpath);
+        S = load(fpath, 'chains');
+        for ii = 1:numel(pps)
+          pp = pps(ii);
+          for k = 1:nPar
+            [mu, qLo, qHi] = indexedParamSummary( ...
+              S.chains, pNames{k}, pp, CIbounds / 100);
+            mnByModel{col}(ii, k) = mu;
+            ciByModel{col}(ii, k, 1) = qLo;
+            ciByModel{col}(ii, k, 2) = qHi;
+          end
+        end
+        clear S;
+      end
+
+      F = figure; clf;
+      setFigure(F, figPos, '');
+      set(F, 'Color', 'w', 'renderer', 'painters');
+
+      contentPos = nan(nRows * nCols, 4);
+      for col = 1:nCols
+        mi = modelIdx(col);
+        pNames = parameterNamesByModel{col};
+        nPar = numel(pNames);
+        pps = ppsByModel{col};
+        nUse = numel(pps);
+        latexLabs = parameterLatexLabels(pNames);
+
+        for k = 1:nRows
+          panel = (k - 1) * nCols + col;
+          ax = subplot(nRows, nCols, panel);
+          if k > nPar
+            axis(ax, 'off');
+            continue;
+          end
+
+          hold(ax, 'on');
+          if nUse == 0
+            text(ax, 0.5, 0.5, 'no MAP users', ...
+              'Units', 'normalized', 'HorizontalAlignment', 'center', ...
+              'FontSize', fontSize);
+          else
+            xs = 1:nUse;
+            for ii = 1:nUse
+              plot(ax, [xs(ii) xs(ii)], squeeze(ciByModel{col}(ii, k, :))', '-', ...
+                'Color', markerFace, 'LineWidth', ciLineWidth);
+            end
+            plot(ax, xs, mnByModel{col}(:, k), '-', ...
+              'Color', markerFace, 'LineWidth', meanLineWidth);
+            plot(ax, xs, mnByModel{col}(:, k), 'o', ...
+              'MarkerFaceColor', markerFace, ...
+              'MarkerEdgeColor', 'none', ...
+              'MarkerSize', markerSize);
+          end
+
+          if nUse == 0
+            xlim(ax, [0 1]);
+          else
+            xlim(ax, [1 nUse] + [-0.5 0.5 + meanLabelXLimPad]);
+          end
+          if isempty(yLimFixed)
+            vals = [mnByModel{col}(:, k)', reshape(ciByModel{col}(:, k, :), 1, [])];
+            vals = vals(isfinite(vals));
+            if isempty(vals)
+              yl = [-1 1];
+            else
+              pad = yPadFrac * max(range(vals), eps);
+              yl = [min(vals) - pad, max(vals) + pad];
+              if yl(1) == yl(2)
+                yl = yl + [-1 1];
+              end
+            end
+            % room above means for numeric labels (labels sit near means, not CI tips)
+            yl(2) = yl(2) + meanLabelYOffsetFrac * max(diff(yl), eps);
+            ylim(ax, yl);
+          else
+            yl = yLimFixed;
+            ylim(ax, yl);
+          end
+          if nUse > 0
+            ylNow = ylim(ax);
+            yOff = meanLabelYOffsetFrac * max(diff(ylNow), eps);
+            for ii = 1:nUse
+              mu = mnByModel{col}(ii, k);
+              if ~isfinite(mu)
+                continue;
+              end
+              text(ax, ii + meanLabelXOffset, mu + yOff, ...
+                sprintf('%.2g', mu), ...
+                'HorizontalAlignment', 'left', ...
+                'VerticalAlignment', 'bottom', ...
+                'FontSize', meanLabelFontSize, ...
+                'Color', markerFace, ...
+                'Clipping', 'off');
+            end
+          end
+          if showZeroLine
+            xl = xlim(ax);
+            ylNow = ylim(ax);
+            if ylNow(1) <= 0 && ylNow(2) >= 0
+              plot(ax, xl, [0 0], '-', 'Color', zeroLineColor, 'LineWidth', 0.5);
+            end
+          end
+          hold(ax, 'off');
+
+          onBottom = (k == nRows);
+          showXHere = ~showXTickLabelsOuterOnly || onBottom;
+          set(ax, ...
+            'XTick', 1:max(nUse, 1), ...
+            'TickDir', 'out', ...
+            'TickLength', [tickLength 0], ...
+            'Box', 'off', ...
+            'FontSize', tickLabelFontSize, ...
+            'Clipping', 'off');
+          if showXHere && nUse > 0
+            set(ax, 'XTickLabel', participantLabels(pps), ...
+              'XTickLabelRotation', xTickLabelRotation);
+          else
+            set(ax, 'XTickLabel', []);
+          end
+
+          ylabel(ax, latexLabs{k}, ...
+            'Interpreter', 'latex', ...
+            'FontSize', paramLabelFontSize, ...
+            'Rotation', 0, ...
+            'HorizontalAlignment', 'right', ...
+            'VerticalAlignment', 'middle');
+
+          moveAxis(gca, moveAxisScale, moveAxisShift);
+          contentPos(panel, :) = get(ax, 'Position');
+          [axX, axY] = Raxes(ax, raxesXShift, raxesYShift);
+          set([axX axY], 'Tag', 'RaxesCopy');
+          title(axX, '');
+          title(axY, '');
+          title(ax, '');
+
+          if showModelColumnTitles && k == 1
+            text(ax, 0.5, modelTitleYNorm, lower(modelShort{mi}), ...
+              'Units', 'normalized', ...
+              'HorizontalAlignment', 'center', ...
+              'VerticalAlignment', 'bottom', ...
+              'FontName', titleFontName, ...
+              'FontSize', titleFontSize, ...
+              'FontWeight', titleFontWeight, ...
+              'Interpreter', 'none', ...
+              'Clipping', 'off');
+          end
+        end
+      end
+
+      if isempty(supAxesPos)
+        keep = all(isfinite(contentPos), 2);
+        if any(keep)
+          pos = contentPos(keep, :);
+          leftMin = min(pos(:, 1));
+          bottomMin = min(pos(:, 2));
+          leftMax = max(pos(:, 1) + pos(:, 3));
+          bottomMax = max(pos(:, 2) + pos(:, 4));
+          supAxesPos = [ ...
+            leftMin - supAxesBuf - raxesYShift, ...
+            bottomMin - supAxesBuf - raxesXShift, ...
+            (leftMax - leftMin) + 2 * supAxesBuf + raxesYShift, ...
+            (bottomMax - bottomMin) + 2 * supAxesBuf + raxesXShift];
+        else
+          supAxesPos = [0.08 0.06 0.86 0.88];
+        end
+      end
+
+      if showXLabel
+        [~, Hx] = suplabel(xLabelStr, 'x', supAxesPos);
+        hxPos = get(Hx, 'Position');
+        hxPos(2) = hxPos(2) + supXLabelCloser;
+        set(Hx, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hxPos);
+      end
+      if showYLabel
+        [~, Hy] = suplabel(yLabelStr, 'y', supAxesPos);
+        hyPos = get(Hy, 'Position');
+        hyPos(1) = hyPos(1) + supYLabelCloser;
+        set(Hy, 'FontSize', labelFontSize, 'VerticalAlignment', 'middle', ...
+          'Position', hyPos);
+      end
+
+    %% ================================================================
     case 'allParameterInferences'
       % One 5x5 figure per model: that model's parameter means (+ 95% CI)
       % for every participant (parallel to allModelPosteriorPredictive).
@@ -2259,7 +3127,7 @@ for analysisIdx = 1:numel(analysisList)
         if nPar == 0
           continue;
         end
-        fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', modelStems{mi}, dataName, engine));
+        fpath = resolveStorageMatPath(storageDir, modelStems{mi}, dataName, engine, storageTag);
         if ~isfile(fpath)
           error('Missing model chains for %s: %s', modelShort{mi}, fpath);
         end
@@ -2430,7 +3298,7 @@ end
 
 function [mapModel, mapProb, pmfPadByParticipant, rebuilt] = loadOrBuildMapPostPredSummary( ...
   summaryPath, forceRegen, ...
-  mixPath, storageDir, dataName, engine, ...
+  mixPath, storageDir, dataName, engine, storageTag, ...
   mixtureName, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
   data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed)
 %LOADORBUILDMAPPOSTPREDSUMMARY  Cache MAP labels + count PMFs for fast replotting.
@@ -2483,7 +3351,7 @@ for mi = uniqueMaps(:)'
   else
     stem = contaminantStems{mi - 8};
   end
-  fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+  fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
   if ~isfile(fpath)
     warning('Missing fit for MAP model %s (%s)', modelLong{mi}, fpath);
     continue;
@@ -2525,7 +3393,7 @@ end
 
 function [pmfPadByModel, matchPropByModel, rebuilt] = loadOrBuildAllModelPostPredSummary( ...
   summaryPath, forceRegen, ...
-  storageDir, dataName, engine, ...
+  storageDir, dataName, engine, storageTag, ...
   cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
   data, d, nP, nT, nPairs, nModels, nTpMat, nPredSamples, rngSeed, ...
   choiceThreshold)
@@ -2558,7 +3426,7 @@ if ~needBuild
       else
         stem = contaminantStems{mi - 8};
       end
-      fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+      fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
       if isfile(fpath) && ~any(strcmp(S.sourcePaths, fpath))
         needBuild = true;
         break;
@@ -2587,7 +3455,7 @@ for mi = 1:nModels
   else
     stem = contaminantStems{mi - 8};
   end
-  fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+  fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag, true);
   pmfPadByModel{mi} = cell(1, nP);
   if ~isfile(fpath)
     warning('Missing fit for model %s (%s)', modelLong{mi}, fpath);
@@ -2633,17 +3501,17 @@ save(summaryPath, ...
 rebuilt = true;
 end
 
-function [mapModel, mapProb, matchProp, meanThetaByParticipant, rebuilt] = ...
+function [mapModel, mapProb, meanObsProb, meanThetaByParticipant, rebuilt] = ...
   loadOrBuildMapForcedChoiceMatchSummary( ...
     summaryPath, forceRegen, ...
-    mixPath, storageDir, dataName, engine, ...
+    mixPath, storageDir, dataName, engine, storageTag, ...
     mixtureName, cognitiveStems, contaminantStems, cognitiveJagsNames, modelLong, ...
     data, d, nP, nT, nModels, choiceThreshold)
-%LOADORBUILDMAPFORCEDCHOICEMATCHSUMMARY  Cache MAP forced-choice match rates.
+%LOADORBUILDMAPFORCEDCHOICEMATCHSUMMARY  Cache MAP mean P(obs) (and match).
 %
 %   MAP identity comes from mixPath. Hierarchical theta comes from
 %   cognitiveStems / contaminantStems (pass MuPrecHalf/Double stems for
-%   prior-robustness match rates).
+%   prior-robustness rates). Third output is mean P(observed decision).
 
 needBuild = forceRegen || ~isfile(summaryPath);
 
@@ -2671,8 +3539,7 @@ if ~needBuild
       if ~(isfinite(mi) && mi >= 1 && mi <= 8)
         continue;
       end
-      fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', ...
-        cognitiveStems{mi}, dataName, engine));
+      fpath = resolveStorageMatPath(storageDir, cognitiveStems{mi}, dataName, engine, storageTag);
       if isfile(fpath) && ~any(strcmp(S.sourcePaths, fpath))
         needBuild = true;
         break;
@@ -2682,14 +3549,18 @@ if ~needBuild
   if ~needBuild
     mapModel = S.mapModel;
     mapProb = S.mapProb;
-    matchProp = S.matchProp;
     meanThetaByParticipant = S.meanThetaByParticipant;
+    if isfield(S, 'meanObsProb')
+      meanObsProb = S.meanObsProb;
+    else
+      meanObsProb = meanObsProbFromMeanThetaCells(meanThetaByParticipant, d, nP, nT);
+    end
     rebuilt = false;
     return;
   end
 end
 
-fprintf('Building MAP forced-choice match summary from full chains...\n');
+fprintf('Building MAP mean-P(obs) summary from full chains...\n');
 
 fprintf('Loading mixture %s\n', mixPath);
 mixS = load(mixPath, 'chains');
@@ -2707,7 +3578,7 @@ for mi = uniqueMaps(:)'
   else
     stem = contaminantStems{mi - 8};
   end
-  fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+  fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
   if ~isfile(fpath)
     if mi <= 8 && (contains(stem, 'MuPrecHalf') || contains(stem, 'MuPrecDouble'))
       fprintf('Skipping MAP model %s — prior-robustness fit not ready:\n  %s\n', ...
@@ -2725,6 +3596,7 @@ for mi = uniqueMaps(:)'
 end
 
 matchProp = nan(1, nP);
+meanObsProb = nan(1, nP);
 meanThetaByParticipant = cell(1, nP);
 for pp = 1:nP
   mi = mapModel(pp);
@@ -2751,13 +3623,14 @@ for pp = 1:nP
   if any(valid)
     matchProp(pp) = mean(forcedLL(valid) == obs(valid));
   end
+  meanObsProb(pp) = meanObsProbFromMeanTheta(meanTh, obs);
 end
 clear chainsByModel;
 
 sourcePaths = [{mixPath}; modelPaths(:)];
 sourceMtimes = [fileMtime(mixPath); modelMtimes(:)];
 save(summaryPath, ...
-  'mapModel', 'mapProb', 'matchProp', 'meanThetaByParticipant', ...
+  'mapModel', 'mapProb', 'matchProp', 'meanObsProb', 'meanThetaByParticipant', ...
   'sourcePaths', 'sourceMtimes', ...
   'choiceThreshold', 'nP', 'mixtureName', '-v7.3');
 rebuilt = true;
@@ -2792,6 +3665,62 @@ if isempty(d)
   mt = NaN;
 else
   mt = d.datenum;
+end
+end
+
+function fitMat = loadModelParticipantFitCsv(csvPath, modelShort, nP)
+%LOADMODELPARTICIPANTFITCSV  nModels-by-nP matrix from descriptive-adequacy CSV.
+T = readtable(csvPath);
+fitMat = nan(numel(modelShort), nP);
+for mi = 1:numel(modelShort)
+  if ~ismember(modelShort{mi}, T.Properties.VariableNames)
+    error('CSV missing model column %s: %s', modelShort{mi}, csvPath);
+  end
+  col = T.(modelShort{mi});
+  if numel(col) < nP
+    error('CSV has %d rows but nP=%d: %s', numel(col), nP, csvPath);
+  end
+  fitMat(mi, :) = col(1:nP);
+end
+if any(fitMat(:) > 1 + 1e-8)
+  fitMat = fitMat / 100;
+end
+end
+
+function p = meanObsProbFromMeanTheta(meanTh, obs)
+%MEANOBSPROBFROMMEANTHETA  Mean posterior P(observed choice) from mean P(LL).
+p = nan;
+if isempty(meanTh) || isempty(obs)
+  return;
+end
+meanTh = meanTh(:);
+obs = obs(:);
+n = min(numel(meanTh), numel(obs));
+if n < 1
+  return;
+end
+meanTh = meanTh(1:n);
+obs = obs(1:n);
+valid = isfinite(meanTh) & isfinite(obs) & (obs == 0 | obs == 1);
+if ~any(valid)
+  return;
+end
+pObs = nan(n, 1);
+isLL = valid & (obs == 1);
+isSS = valid & (obs == 0);
+pObs(isLL) = meanTh(isLL);
+pObs(isSS) = 1 - meanTh(isSS);
+p = mean(pObs(valid));
+end
+
+function meanObsProb = meanObsProbFromMeanThetaCells(meanThetaByParticipant, d, nP, nT)
+meanObsProb = nan(1, nP);
+for pp = 1:nP
+  meanTh = meanThetaByParticipant{pp};
+  if isempty(meanTh) || numel(meanTh) ~= nT
+    continue;
+  end
+  meanObsProb(pp) = meanObsProbFromMeanTheta(meanTh, d.LL(pp, :));
 end
 end
 
@@ -2964,16 +3893,20 @@ if strcmp(stem, baseStem)
 end
 end
 
-function tf = hierarchicalStemAvailable(storageDir, stem, dataName, engine)
-tf = isfile(fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine)));
+function tf = hierarchicalStemAvailable(storageDir, stem, dataName, engine, storageTag)
+tf = isfile(resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag));
 end
 
-function chains = loadHierarchicalChains(storageDir, stem, dataName, engine)
-fpath = fullfile(storageDir, sprintf('%s_%s_%s.mat', stem, dataName, engine));
+function chains = loadHierarchicalChains(storageDir, stem, dataName, engine, storageTag)
+[fpath, usedFallback] = resolveStorageMatPath( ...
+  storageDir, stem, dataName, engine, storageTag, true);
 if ~isfile(fpath)
   error(['Missing hierarchical fit %s\n' ...
     'Run models/runHierarchicalExecutionPriorRobustness.m for half/double fits.'], ...
     fpath);
+end
+if usedFallback
+  % notice already printed by resolveStorageMatPath(..., true)
 end
 fprintf('Loading %s\n', fpath);
 L = load(fpath, 'chains');

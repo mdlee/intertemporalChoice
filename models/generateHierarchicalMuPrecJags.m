@@ -1,10 +1,11 @@
 function generateHierarchicalMuPrecJags(srcJagsPath, dstJagsPath, precScale)
-%GENERATEHIERARCHICALMUPRECJAGS  Scale dnorm precisions on group mu_* hyperpriors.
+%GENERATEHIERARCHICALMUPRECJAGS  Scale dnorm precisions on group mu* hyperpriors.
 %
 %   PRECSCALE = 0.5 halves prior precision (wider priors on group means);
 %   PRECSCALE = 2 doubles prior precision (tighter priors on group means).
 %
-%   Works for latent-mixture and separate hierarchical cognitive models.
+%   Matches both legacy mu_* names and Trinity-safe camelCase muFoo names
+%   (e.g. muKappaEX) used by the latent-mixture entrop JAGS.
 
 txt = fileread(srcJagsPath);
 lines = splitlines(string(txt));
@@ -15,7 +16,10 @@ end
 nChanged = 0;
 for i = 1:numel(lines)
   line = char(lines(i));
-  tok = regexp(line, '^\s*(mu_\w+)\s*~\s*dnorm\(([^,]+),\s*([^)]+)\)(.*)$', 'tokens', 'once');
+  % Legacy: mu_kappaEX ~ dnorm(...)  or Trinity-safe: muKappaEX ~ dnorm(...)
+  tok = regexp(line, ...
+    '^\s*(mu_?[A-Za-z]\w*)\s*~\s*dnorm\(([^,]+),\s*([^)]+)\)(.*)$', ...
+    'tokens', 'once');
   if isempty(tok)
     continue;
   end
@@ -31,10 +35,10 @@ end
 
 if nChanged == 0
   error('generateHierarchicalMuPrecJags:noMuPriors', ...
-    'No mu_* ~ dnorm(...) lines found in %s', srcJagsPath);
+    'No mu* ~ dnorm(...) lines found in %s', srcJagsPath);
 end
 
-header = sprintf('# Generated from %s; mu_* dnorm precision × %g\n', ...
+header = sprintf('# Generated from %s; mu* dnorm precision × %g\n', ...
   srcJagsPath, precScale);
 outTxt = char(strjoin([string(header); lines], newline));
 fid = fopen(dstJagsPath, 'w');

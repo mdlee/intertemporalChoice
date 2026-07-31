@@ -1,10 +1,19 @@
-function runHierarchicalLatentMixtureModel(modelName, initGenerator, varargin)
+function [converged, attemptInfo] = runHierarchicalLatentMixtureModel(modelName, initGenerator, varargin)
 %RUNHIERARCHICALLATENTMIXTUREMODEL  Fit hierarchical latent mixture (all participants).
 %
 %   MCMC defaults: 12 chains (all required to converge),
 %   burn-in 2e3 (fixed), 5e3 samples (fixed), thin 1 (×2 per failure).
 %   preLoad (default true): use storage/{modelName}_*.mat only if max z R-hat
 %   <= rhatCritical and enough chains pass; otherwise refit and overwrite.
+%
+%   Name-value extras:
+%     storageTag     — if non-empty, save/load
+%                      {model}_{data}_{engine}__{tag}.mat (canonical untouched)
+%     singleAttempt  — one MCMC attempt at nThin; do not double thin on failure
+%     saveOnConverge — save when gate passes (default true)
+%     saveBestPath   — if non-empty, always write here when this attempt beats
+%                      previousBestRhat (for drawFiguresEntrop canonical path)
+%     previousBestRhat — scalar; used with saveBestPath (default Inf)
 
 p = inputParser;
 addParameter(p, 'preLoad', true, @islogical);
@@ -20,6 +29,11 @@ addParameter(p, 'doParallel', true, @islogical);
 addParameter(p, 'dataName', 'intertemporalChoice', @ischar);
 addParameter(p, 'dataDir', '', @ischar);
 addParameter(p, 'saveFigures', true, @islogical);
+addParameter(p, 'storageTag', '', @(x) ischar(x) || isstring(x));
+addParameter(p, 'singleAttempt', false, @islogical);
+addParameter(p, 'saveOnConverge', true, @islogical);
+addParameter(p, 'saveBestPath', '', @(x) ischar(x) || isstring(x));
+addParameter(p, 'previousBestRhat', inf, @isnumeric);
 parse(p, varargin{:});
 
 engine = 'jags';
@@ -27,6 +41,8 @@ modelsDir = fileparts(mfilename('fullpath'));
 generalDir = fullfile(modelsDir, '..', 'general');
 figuresDir = fullfile(modelsDir, 'figures');
 storageDir = fullfile(modelsDir, 'storage');
+storageTag = char(p.Results.storageTag);
+saveBestPath = char(p.Results.saveBestPath);
 
 addpath(generalDir);
 cleanupObj = onCleanup(@() rmpath(generalDir));
@@ -34,8 +50,17 @@ cleanupObj = onCleanup(@() rmpath(generalDir));
 [data, d] = prepareIntertemporalChoiceData(p.Results.dataName, p.Results.dataDir);
 data.nModels = p.Results.nModels;
 
-fileName = sprintf('%s_%s_%s.mat', modelName, p.Results.dataName, engine);
-storagePath = fullfile(storageDir, fileName);
+storagePath = storageMatPath(storageDir, modelName, p.Results.dataName, engine, storageTag);
+
+attemptInfo = struct( ...
+  'rMax', nan, ...
+  'rHatEach', [], ...
+  'nThin', p.Results.nThin, ...
+  'keepChains', [], ...
+  'chains', [], ...
+  'bestRhat', p.Results.previousBestRhat, ...
+  'savedBest', false, ...
+  'converged', false);
 
 if p.Results.preLoad && isfile(storagePath)
   fprintf('Checking stored chains: %s\n', storagePath);
@@ -51,10 +76,19 @@ if p.Results.preLoad && isfile(storagePath)
     zRhat, min(rHatEach), sum(rHatEach <= 1 + 1e-9), numel(rHatEach), ...
     numel(keepChains), p.Results.nChains);
 
+  attemptInfo.rMax = zRhat;
+  attemptInfo.rHatEach = rHatEach;
+  attemptInfo.keepChains = keepChains;
+  attemptInfo.chains = chains;
+  attemptInfo.bestRhat = min(attemptInfo.bestRhat, zRhat);
+
   if zRhat <= p.Results.rhatCritical && numel(keepChains) >= p.Results.keepChainsMin
     fprintf('Stored chains meet R-hat <= %.3g — using saved fit\n', p.Results.rhatCritical);
     chains = subsetChainsLatentMixture(chains, keepChains);
+    attemptInfo.chains = chains;
+    attemptInfo.converged = true;
     showFinalLatentMixtureFigures(chains, data, d, modelName, figuresDir, p.Results.saveFigures);
+    converged = true;
     return;
   end
   fprintf('Stored chains do not meet R-hat <= %.3g — refitting\n', p.Results.rhatCritical);
@@ -66,8 +100,14 @@ end
 if p.Results.resetThin
   clearMcmcState(storageDir, modelName);
 end
-[nThin, nBurnin] = initialMcmcFromState(storageDir, modelName, p.Results.nThin, p.Results.nBurnin);
+if p.Results.singleAttempt
+  nThin = p.Results.nThin;
+  nBurnin = p.Results.nBurnin;
+else
+  [nThin, nBurnin] = initialMcmcFromState(storageDir, modelName, p.Results.nThin, p.Results.nBurnin);
+end
 converged = false;
+bestRhat = p.Results.previousBestRhat;
 
 while ~converged
   tic;
@@ -103,14 +143,45 @@ while ~converged
     'sgtitle', sprintf('%s | thin=%d | max R-hat=%.3f', modelName, nThin, zRhat), ...
     'savePath', hierarchicalFigurePath(figuresDir, modelName, sprintf('thin%d', nThin), p.Results.saveFigures));
 
+  attemptInfo.rMax = zRhat;
+  attemptInfo.rHatEach = rHatEach;
+  attemptInfo.nThin = nThin;
+  attemptInfo.keepChains = keepChains;
+  attemptInfo.chains = chains;
+
+  if zRhat < bestRhat
+    bestRhat = zRhat;
+    attemptInfo.bestRhat = bestRhat;
+    if ~isempty(saveBestPath)
+      if numel(keepChains) >= p.Results.keepChainsMin
+        chainsSave = subsetChainsLatentMixture(chains, keepChains);
+      else
+        chainsSave = chains;
+      end
+      toSave = struct('chains', chainsSave, 'stats', stats, ...
+        'diagnostics', diagnostics, 'info', info);
+      save(saveBestPath, '-struct', 'toSave', '-v7.3');
+      attemptInfo.savedBest = true;
+      fprintf('Updated best-so-far (z R-hat=%.3f) → %s\n', bestRhat, saveBestPath);
+    end
+  end
+
   if zRhat <= p.Results.rhatCritical && numel(keepChains) >= p.Results.keepChainsMin
     chains = subsetChainsLatentMixture(chains, keepChains);
+    attemptInfo.chains = chains;
     converged = true;
-    save(storagePath, 'chains', 'stats', 'diagnostics', 'info', '-v7.3');
-    fprintf('Saved %s\n', storagePath);
-    clearMcmcState(storageDir, modelName);
+    attemptInfo.converged = true;
+    if p.Results.saveOnConverge
+      save(storagePath, 'chains', 'stats', 'diagnostics', 'info', '-v7.3');
+      fprintf('Saved %s\n', storagePath);
+      clearMcmcState(storageDir, modelName);
+    end
   else
     saveUnsuccessfulMcmcState(storageDir, modelName, nThin);
+    if p.Results.singleAttempt
+      fprintf('Not converged at thin=%d (max z R-hat=%.3f)\n', nThin, zRhat);
+      break;
+    end
     nThinNext = nextThin(nThin);
     fprintf('Not converged — next: thin=%d (was %d), burn-in=%g (unchanged)\n', ...
       nThinNext, nThin, nBurnin);
@@ -119,13 +190,22 @@ while ~converged
 
   grtable(chains, p.Results.rhatCritical);
   codatable(chains);
+
+  if converged || p.Results.singleAttempt
+    break;
+  end
 end
 
-showFinalLatentMixtureFigures(chains, data, d, modelName, figuresDir, p.Results.saveFigures);
+if converged || (~isempty(attemptInfo.chains) && isstruct(attemptInfo.chains))
+  showFinalLatentMixtureFigures(attemptInfo.chains, data, d, modelName, figuresDir, p.Results.saveFigures);
+end
 
 end
 
 function showFinalLatentMixtureFigures(chains, data, d, modelName, figuresDir, saveFigures)
+if isempty(chains) || ~isstruct(chains)
+  return;
+end
 zMean = get_matrix_from_coda(chains, 'z', @mean);
 zMode = get_matrix_from_coda(chains, 'z', @mode);
 disp(table((1:d.nParticipants)', zMean(:), zMode(:), 'VariableNames', {'p', 'zMean', 'zMode'}));
