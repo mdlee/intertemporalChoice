@@ -1,6 +1,6 @@
 # Intertemporal choice: evaluating integration rules
 
-Code, data, and figures for an individual-level Bayesian comparison of eight intertemporal-choice integration rules (exponential, hyperbolic, hyperboloid, proportional differences, direct differences, tradeoff, unified tradeoff, and ITCH), plus three contaminant models, using Grünwald entropification as the decision rule.
+Code, data, and figures for an individual-level Bayesian comparison of eight intertemporal-choice integration rules (exponential, hyperbolic, hyperboloid, proportional difference, direct difference, tradeoff, unified tradeoff, and ITCH), plus three contaminant models, using Grünwald entropification as the decision rule.
 
 The paper figures live under `results/`. MCMC chain files are not in the repository (they are large); re-running the MATLAB scripts below regenerates them under `models/storage/`.
 

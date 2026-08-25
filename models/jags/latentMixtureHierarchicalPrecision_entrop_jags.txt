@@ -17,10 +17,10 @@ model{
   tauKappaHY ~ dgamma(1, 1) T(0.05, 25)
   muTauHY ~ dnorm(1, 4) T(1.0E-4, 100)
   tauTauHY ~ dgamma(1, 1) T(0.05, 25)
-  # proportional differences
+  # proportional difference
   muDeltaPD ~ dnorm(0, 4) T(-2, 2)
   tauDeltaPD ~ dgamma(1, 1) T(0.05, 25)
-  # direct differences
+  # direct difference
   muDeltaDD ~ dnorm(0, 1.0E-6) T(-2000, 2000)
   tauDeltaDD ~ dgamma(1, 1) T(0.05, 25)
   muOmegaDD ~ dnorm(0.5, 4) T(1e-6, 1-1e-6)

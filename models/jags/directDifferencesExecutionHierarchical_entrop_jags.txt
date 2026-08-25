@@ -1,7 +1,7 @@
 # Generated from /home/mdlee/Dropbox/otherPapers/intertemporalChoice/models/directDifferencesExecutionHierarchical_jags.txt; Grünwald entropification (one w per participant)
 # P(LL | rule favors LL) = 1/(1+exp(-w[i])); latent sign matches probit0
 
-# DIRECT DIFFERENCES — hierarchical execution
+# DIRECT DIFFERENCE — hierarchical execution
 model{
   mu_delta ~ dnorm(0, 1.0E-6) T(-2000, 2000)
   tau_delta ~ dgamma(1, 1) T(0.05, 25)
