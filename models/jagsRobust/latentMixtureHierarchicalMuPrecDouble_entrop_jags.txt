@@ -25,7 +25,7 @@ model{
   # direct differences
   muDeltaDD ~ dnorm(0, 2.0E-06) T(-2000, 2000)
   tauDeltaDD ~ dgamma(1, 1) T(0.05, 25)
-  muOmegaDD ~ dnorm(0.5, 8) T(0.01, 0.99)
+  muOmegaDD ~ dnorm(0.5, 8) T(1e-6, 1-1e-6)
   tauOmegaDD ~ dgamma(1, 1) T(0.05, 25)
   # tradeoff
   muGammaTR ~ dnorm(1, 8) T(1.0E-4, 100)
@@ -50,13 +50,13 @@ model{
   # itch
   muBeta0IT ~ dnorm(0, 8) T(-2, 2)
   tauBeta0IT ~ dgamma(1, 1) T(0.05, 25)
-  muBetaRAIT ~ dnorm(0, 8) T(-2, 2)
+  muBetaRAIT ~ dnorm(0, 8) T(0, 2)
   tauBetaRAIT ~ dgamma(1, 1) T(0.05, 25)
-  muBetaRRIT ~ dnorm(0, 8) T(-2, 2)
+  muBetaRRIT ~ dnorm(0, 8) T(0, 2)
   tauBetaRRIT ~ dgamma(1, 1) T(0.05, 25)
-  muBetaTAIT ~ dnorm(0, 8) T(-2, 2)
+  muBetaTAIT ~ dnorm(0, 8) T(-2, 0)
   tauBetaTAIT ~ dgamma(1, 1) T(0.05, 25)
-  muBetaTRIT ~ dnorm(0, 8) T(-2, 2)
+  muBetaTRIT ~ dnorm(0, 8) T(-2, 0)
   tauBetaTRIT ~ dgamma(1, 1) T(0.05, 25)
 
   # entropification consistency (participant-level w)
@@ -80,7 +80,7 @@ model{
     deltaPD[i] ~ dnorm(muDeltaPD, tauDeltaPD) T(-2, 2)
 
     deltaDD[i] ~ dnorm(muDeltaDD, tauDeltaDD) T(-2000, 2000)
-    omegaDD[i] ~ dnorm(muOmegaDD, tauOmegaDD) T(0.01, 0.99)
+    omegaDD[i] ~ dnorm(muOmegaDD, tauOmegaDD) T(1e-6, 1-1e-6)
 
     gammaTR[i] ~ dnorm(muGammaTR, tauGammaTR) T(1.0E-4, 100)
     tauTR[i] ~ dnorm(muTauTR, tauTauTR) T(1.0E-4, 100)
@@ -94,13 +94,13 @@ model{
     etaUT[i] ~ dnorm(muEtaUT, tauEtaUT) T(0, 500)
 
     beta0IT[i] ~ dnorm(muBeta0IT, tauBeta0IT) T(-2, 2)
-    betaRAIT[i] ~ dnorm(muBetaRAIT, tauBetaRAIT) T(-2, 2)
-    betaRRIT[i] ~ dnorm(muBetaRRIT, tauBetaRRIT) T(-2, 2)
-    betaTAIT[i] ~ dnorm(muBetaTAIT, tauBetaTAIT) T(-2, 2)
-    betaTRIT[i] ~ dnorm(muBetaTRIT, tauBetaTRIT) T(-2, 2)
+    betaRAIT[i] ~ dnorm(muBetaRAIT, tauBetaRAIT) T(0, 2)
+    betaRRIT[i] ~ dnorm(muBetaRRIT, tauBetaRRIT) T(0, 2)
+    betaTAIT[i] ~ dnorm(muBetaTAIT, tauBetaTAIT) T(-2, 0)
+    betaTRIT[i] ~ dnorm(muBetaTRIT, tauBetaTRIT) T(-2, 0)
 
-    alphaLL[i] ~ dbeta(10, 1) T(0.901, 0.999)
-    alphaSS[i] ~ dbeta(10, 1) T(0.901, 0.999)
+    alphaLL[i] ~ dbeta(10, 1)
+    alphaSS[i] ~ dbeta(10, 1)
 
     for (j in 1:nTrials){
       decision[i, j] ~ dbern(theta[i, j, z[i]])
