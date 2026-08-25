@@ -1,7 +1,7 @@
 # Generated from /home/mdlee/Dropbox/otherPapers/intertemporalChoice/models/proportionalDifferencesExecutionHierarchical_jags.txt; Grünwald entropification (one w per participant)
 # P(LL | rule favors LL) = 1/(1+exp(-w[i])); latent sign matches probit0
 
-# PROPORTIONAL DIFFERENCES — hierarchical execution
+# PROPORTIONAL DIFFERENCE — hierarchical execution
 model{
   mu_delta ~ dnorm(0, 4) T(-2, 2)
   tau_delta ~ dgamma(1, 1) T(0.05, 25)
