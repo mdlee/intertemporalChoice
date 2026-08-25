@@ -17,14 +17,8 @@ models/figures/
 models/old/
 models/tables/
 models/jagsRobust/
-
-# Stan compiled binaries and MCMC draws (keep .stan / .R / .m sources)
-models/stan/output/
-models/stan/fits/
-models/stan/data/*.json
-models/stan/logs/
-models/stan/storage/
-models/stan/figures/
+models/jags/old/
+models/stan/
 
 # Runtime / MCMC logs
 *.log
@@ -36,6 +30,34 @@ modelClusters/
 # Results helpers (keep drawFiguresEntrop.m)
 results/refreshMapModelForcedChoiceMatchFigures.m
 results/refreshMapModelParameterRobustnessFigures.m
+
+# Extra diagnostic figures (not paper / not href supplements)
+results/descriptiveAdequacy/allModelPosteriorPredictive_*
+results/latentMixture/latentMixturePosteriors.eps
+results/latentMixture/latentMixturePosteriors.png
+results/latentMixture/latentMixturePosteriorsHalf.*
+results/latentMixture/latentMixturePosteriorsDouble.*
+results/latentMixture/latentMixturePriorRobustness.*
+results/parameterInferences/parameterInferences.eps
+results/parameterInferences/parameterInferences.png
+
+# Session-only runners and monitors (not needed to replicate the paper)
+models/runAlphaPriorReruns.m
+models/runItchBetaSign.m
+models/runLatentMixtureMedianInit.m
+models/runMixtureChainStacking.m
+models/runHierarchicalExecutionSequentialStan.m
+models/runHierarchicalLatentMixtureEntropStan.m
+models/runLatentMixtureSequentialStan.m
+models/stageStanEntropModel.m
+models/stackingOptimizeWeights.m
+models/psisSmoothLogWeights.m
+models/latentMixturePointwiseLogLik.m
+models/writeOvernightLiveCanvas.m
+models/writeOvernightLiveCanvas.py
+models/watchMcmcStatus.sh
+models/__pycache__/
+*.pyc
 
 # LaTeX auto-converted EPS companions
 **/*-eps-converted-to*
