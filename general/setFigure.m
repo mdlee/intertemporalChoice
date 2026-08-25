@@ -26,7 +26,8 @@ else
    elseif tmp(3) == 1920 || tmp(3) == 3440
       dual = 'upDown';
    else
-      error('not sure about monitors');
+      % Headless / unusual geometries (e.g. MATLAB -batch): keep normalized pos.
+      dual = 'leave';
    end
    % dual
    switch dual

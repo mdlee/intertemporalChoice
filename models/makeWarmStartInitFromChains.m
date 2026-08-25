@@ -61,8 +61,12 @@ switch pname
     lo = 0; hi = 500;
   case 'w'
     lo = 0; hi = 20;
-  case {'beta0', 'betaRA', 'betaRR', 'betaTA', 'betaTR'}
+  case 'beta0'
     lo = -2; hi = 2;
+  case {'betaRA', 'betaRR'}
+    lo = 0; hi = 2;
+  case {'betaTA', 'betaTR'}
+    lo = -2; hi = 0;
   otherwise
     lo = -inf; hi = inf;
 end

@@ -7,7 +7,7 @@
 % Output folders under results/:
 %   basic/                experimentalDesign, dataCounts
 %   latentMixture/        latentMixturePosteriors{,Half,Double},
-%                         latentMixturePosteriorsDescriptiveAdequacy{,Half,Double},
+%                         latentMixturePosteriorsDescriptiveAdequacy,
 %                         latentMixturePriorRobustness
 %   descriptiveAdequacy/  mapModelPosteriorPredictive, allModelPosteriorPredictive,
 %                         misfitGallery, mapModelForcedChoiceMatch, modelAgreementTables
@@ -77,10 +77,10 @@ else
   analysisList = {...
     %'experimentalDesign'; ...
     %'dataCounts'; ...
-        'latentMixturePosteriorsDescriptiveAdequacy'; ...
-    'mapModelPosteriorPredictive'; ...
-    'misfitGallery'; ...
-      'parameterChange'; ...
+    %    'latentMixturePosteriorsDescriptiveAdequacy'; ...
+   % 'mapModelPosteriorPredictive'; ...
+   % 'misfitGallery'; ...
+     % 'parameterChange'; ...
     % end paper
    %'%latentMixturePosteriors'; ...
  %'parameterInferences'; ...
@@ -91,7 +91,7 @@ else
     %'mapModelForcedChoiceMatch'; ...
     %'modelAgreementTables'; ...
     %'mapModelParameterRobustness'; ...
-  % 'allParameterInferences'; ...
+   'allParameterInferences'; ...
   };
 end
 clear overrideList;
@@ -130,10 +130,7 @@ fprintf('drawFiguresEntrop storageTag = ''%s'' (empty = canonical)\n', storageTa
 outputSubdirByAnalysis = containers.Map( ...
   {'experimentalDesign', 'dataCounts', ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
-   'latentMixturePosteriorsDouble', ...
-   'latentMixturePosteriorsDescriptiveAdequacy', ...
-   'latentMixturePosteriorsDescriptiveAdequacyHalf', ...
-   'latentMixturePosteriorsDescriptiveAdequacyDouble', ...
+   'latentMixturePosteriorsDouble', 'latentMixturePosteriorsDescriptiveAdequacy', ...
    'latentMixturePriorRobustness', ...
    'mapModelPosteriorPredictive', 'allModelPosteriorPredictive', ...
    'misfitGallery', ...
@@ -142,10 +139,7 @@ outputSubdirByAnalysis = containers.Map( ...
    'allParameterInferences', 'parameterChange'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
-   'latentMixture', ...
-   'latentMixture', ...
-   'latentMixture', ...
-   'latentMixture', ...
+   'latentMixture', 'latentMixture', ...
    'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
    'descriptiveAdequacy', ...
@@ -699,29 +693,13 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
-    case {'latentMixturePosteriorsDescriptiveAdequacy', ...
-        'latentMixturePosteriorsDescriptiveAdequacyHalf', ...
-        'latentMixturePosteriorsDescriptiveAdequacyDouble'}
+    case 'latentMixturePosteriorsDescriptiveAdequacy'
       % Same 5x5 latent-mixture posterior bars as latentMixturePosteriors,
       % plus mean P(observed decision) markers (0-1 on the same axis).
       % MAP model: filled black circle + two-letter code above; others: open.
-      % Half/Double: mixture bars from mu-prec robustness mats; P(obs)
-      % overlays use matching hierarchical mu-prec fits when present.
 
-      switch analysisName
-        case 'latentMixturePosteriorsDescriptiveAdequacyHalf'
-          mixStem = 'latentMixtureHierarchicalMuPrecHalf_entrop';
-          precLabel = 'Half';
-          sgtitleStr = 'Latent mixture posteriors with mean P(observed) (half priors)';
-        case 'latentMixturePosteriorsDescriptiveAdequacyDouble'
-          mixStem = 'latentMixtureHierarchicalMuPrecDouble_entrop';
-          precLabel = 'Double';
-          sgtitleStr = 'Latent mixture posteriors with mean P(observed) (double priors)';
-        otherwise
-          mixStem = mixtureName;
-          precLabel = '';
-          sgtitleStr = 'Latent mixture posteriors with mean P(observed)';
-      end
+      mixStem = mixtureName;
+      sgtitleStr = 'Latent mixture posteriors with mean P(observed)';
 
       % graphics constants
       fontSize = 10;
@@ -771,11 +749,6 @@ for analysisIdx = 1:numel(analysisList)
       end
       fprintf('Loading %s\n', agreeCsv);
       matchProp = loadModelParticipantFitCsv(agreeCsv, modelShort, nP);
-      if ~isempty(precLabel)
-        matchProp = overlayMeanObsFromMuPrecFits( ...
-          matchProp, precLabel, storageDir, cognitiveStems, dataName, engine, ...
-          storageTag, data, d, nP, nT, cognitiveJagsNames);
-      end
 
       mixPath = resolveStorageMatPath(storageDir, mixStem, dataName, engine, storageTag);
       if ~isfile(mixPath)
@@ -3183,7 +3156,7 @@ for analysisIdx = 1:numel(analysisList)
     %% ================================================================
     case 'allParameterInferences'
       % One 5x5 figure per model: that model's parameter means (+ 95% CI)
-      % for every participant under that model (not MAP-subset).
+      % for every participant (parallel to allModelPosteriorPredictive).
 
       fontSize = 10;
       tickLabelFontSize = fontSize + 1;
@@ -3205,7 +3178,7 @@ for analysisIdx = 1:numel(analysisList)
       raxesYShift = 0.01;
       moveAxisScale = [1 1 1 0.7];
       moveAxisShift = [0 0.015 0 0];
-      yLimFixed = []; % per-panel auto so every participant's values stay in view
+      yLimFixed = [-5 10];
       meanLabelFontSize = 7;
       meanLabelYOffset = 0.45;
       nRows = 5;
@@ -3311,7 +3284,7 @@ for analysisIdx = 1:numel(analysisList)
               yl = [-1 1];
             else
               pad = 0.1 * max(range(vals), 1);
-              yl = [min(vals) - pad, max(vals) + pad + meanLabelYOffset];
+              yl = [min(vals) - pad, max(vals) + pad];
             end
             ylim(ax, yl);
           else
@@ -4039,31 +4012,6 @@ for p = 1:nPairs
   for k = 0:nk
     pmfPad(p, k + 1) = mean(col == k);
   end
-end
-end
-
-function matchProp = overlayMeanObsFromMuPrecFits( ...
-    matchProp, precLabel, storageDir, cognitiveStems, dataName, engine, ...
-    storageTag, data, d, nP, nT, cognitiveJagsNames)
-%OVERLAYMEANOBSFROMMUPRECFITS  Replace P(obs) rows with mu-prec hierarchical fits.
-for mi = 1:numel(cognitiveStems)
-  stem = cognitiveMuPrecStem(cognitiveStems{mi}, precLabel);
-  fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
-  if ~isfile(fpath)
-    fprintf('No %s hierarchical fit for %s — keeping original P(obs)\n', ...
-      precLabel, cognitiveStems{mi});
-    continue;
-  end
-  fprintf('P(obs) from %s\n', fpath);
-  L = load(fpath, 'chains');
-  for pp = 1:nP
-    meanTh = mapModelMeanTheta(L.chains, data, cognitiveJagsNames, mi, pp, nT);
-    if isempty(meanTh) || numel(meanTh) ~= nT
-      continue;
-    end
-    matchProp(mi, pp) = meanObsProbFromMeanTheta(meanTh, d.LL(pp, :));
-  end
-  clear L;
 end
 end
 

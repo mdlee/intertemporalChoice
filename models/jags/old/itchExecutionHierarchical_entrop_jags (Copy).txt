@@ -1,0 +1,34 @@
+# Generated from /home/mdlee/Dropbox/otherPapers/intertemporalChoice/models/itchExecutionHierarchical_jags.txt; Grünwald entropification (one w per participant)
+# P(LL | rule favors LL) = 1/(1+exp(-w[i])); latent sign matches probit0
+
+# ITCH — hierarchical execution
+model{
+  mu_beta0 ~ dnorm(0, 4) T(-2, 2)
+  tau_beta0 ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaRA ~ dnorm(0, 4) T(-2, 2)
+  tau_betaRA ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaRR ~ dnorm(0, 4) T(-2, 2)
+  tau_betaRR ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaTA ~ dnorm(0, 4) T(-2, 2)
+  tau_betaTA ~ dgamma(1, 1) T(0.05, 25)
+  mu_betaTR ~ dnorm(0, 4) T(-2, 2)
+  tau_betaTR ~ dgamma(1, 1) T(0.05, 25)
+  mu_w ~ dnorm(2, 1) T(0, 20)
+  tau_w ~ dgamma(1, 1) T(0.05, 25)
+  for (i in 1:nParticipants){
+    beta0[i] ~ dnorm(mu_beta0, tau_beta0) T(-2, 2)
+    betaRA[i] ~ dnorm(mu_betaRA, tau_betaRA) T(-2, 2)
+    betaRR[i] ~ dnorm(mu_betaRR, tau_betaRR) T(-2, 2)
+    betaTA[i] ~ dnorm(mu_betaTA, tau_betaTA) T(-2, 2)
+    betaTR[i] ~ dnorm(mu_betaTR, tau_betaTR) T(-2, 2)
+    w[i] ~ dnorm(mu_w, tau_w) T(0, 20)
+    for (j in 1:nTrials){
+      diffRewardA[i, j] = betaRA[i]*(rLL[i, j] - rSS[i, j])
+      diffRewardR[i, j] = betaRR[i]*((rLL[i, j] - rSS[i, j])/(0.5*(rLL[i, j] + rSS[i, j])))
+      diffTimeA[i, j] = betaTA[i]*(tLL[i, j] - tSS[i, j])
+      diffTimeR[i, j] = betaTR[i]*((tLL[i, j] - tSS[i, j])/(0.5*(tLL[i, j] + tSS[i, j])))
+      theta[i, j] = ifelse(step(beta0[i] + diffRewardA[i, j] + diffRewardR[i, j] + diffTimeA[i, j] + diffTimeR[i, j]), 1/(1+exp(-w[i])), 1/(1+exp(w[i])))
+      decision[i, j] ~ dbern(theta[i, j])
+    }
+  }
+}
