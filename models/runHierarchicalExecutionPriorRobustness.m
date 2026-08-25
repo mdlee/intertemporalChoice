@@ -21,8 +21,9 @@ addpath(modelsDir);
 
 dataName = 'intertemporalChoice';
 engine = 'jags';
-rhatCritical = 1.2;
-keepChainsMin = 8;
+rhatCritical = 1.05;
+nSamplesMin = 1e4;
+keepChainsMin = 6;
 
 % Same monitor lists as entrop hierarchical fits (epsilon → w).
 modelSpecs = {
@@ -76,8 +77,11 @@ for m = 1:size(modelSpecs, 1)
     runHierarchicalExecutionModel(modelName, monitorParams, initEntrop, ...
       'dataName', dataName, ...
       'rhatCritical', rhatCritical, ...
+      'nSamplesMin', nSamplesMin, ...
       'keepChainsMin', keepChainsMin, ...
-      'preLoad', true);
+      'nChains', 6, ...
+      'preLoad', true, ...
+      'resetThin', false);
   end
 end
 

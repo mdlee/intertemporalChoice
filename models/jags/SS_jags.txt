@@ -1,7 +1,7 @@
 # SS MODEL
 model{
   for (i in 1:nParticipants){
-    alpha[i] ~ dunif(0.9, 1)
+    alpha[i] ~ dbeta(10, 1)
     for (j in 1:nTrials){
       # probability of choosing larger later
       theta[i, j] = 1-alpha[i]

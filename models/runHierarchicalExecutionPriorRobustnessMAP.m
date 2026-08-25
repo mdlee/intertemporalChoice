@@ -29,7 +29,7 @@ addpath(resultsDir);
 dataName = 'intertemporalChoice';
 engine = 'jags';
 rhatCritical = 1.2;
-keepChainsMin = 8;
+keepChainsMin = 6;
 nBurnin = 1e3;
 nSamples = 2e3;
 nThin = 1;
