@@ -14,13 +14,31 @@ manuscripts/
 
 # Models subfolders not for version control
 models/figures/
-models/stan/
 models/old/
 models/tables/
+models/jagsRobust/
+
+# Stan compiled binaries and MCMC draws (keep .stan / .R / .m sources)
+models/stan/output/
+models/stan/fits/
+models/stan/data/*.json
+models/stan/logs/
+models/stan/storage/
+models/stan/figures/
 
 # Runtime / MCMC logs
 *.log
 models/logs/
+
+# Cluster-mixture analysis (local MCMC + outputs)
+modelClusters/
+
+# Results helpers (keep drawFiguresEntrop.m)
+results/refreshMapModelForcedChoiceMatchFigures.m
+results/refreshMapModelParameterRobustnessFigures.m
+
+# LaTeX auto-converted EPS companions
+**/*-eps-converted-to*
 
 # OS / editor junk
 .DS_Store

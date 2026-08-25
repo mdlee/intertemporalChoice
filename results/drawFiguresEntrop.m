@@ -7,7 +7,7 @@
 % Output folders under results/:
 %   basic/                experimentalDesign, dataCounts
 %   latentMixture/        latentMixturePosteriors{,Half,Double},
-%                         latentMixturePosteriorsDescriptiveAdequacy,
+%                         latentMixturePosteriorsDescriptiveAdequacy{,Half,Double},
 %                         latentMixturePriorRobustness
 %   descriptiveAdequacy/  mapModelPosteriorPredictive, allModelPosteriorPredictive,
 %                         misfitGallery, mapModelForcedChoiceMatch, modelAgreementTables
@@ -28,11 +28,11 @@
 %
 % Run from results/:
 %   drawFiguresEntrop
-%
+%P(
 % From another script (e.g. incremental MCMC draft loop), set
 %   analysisListOverride = {'mapModelParameterRobustness'};
 %   % or {'mapModelForcedChoiceMatch'} / {'misfitGallery'} / both
-%   misfitGalleryParticipants = {'D','H','S','V','E'}; % optional, Ex..DD
+%   misfitGalleryParticipants = {'E','E','E','K'}; % optional, Ex..PD
 %   drawFiguresEntropKeepWorkspace = true;
 % then run(this file) to refresh only those figures without clearing the caller.
 
@@ -48,7 +48,7 @@ callerStorageTag = '';
 if hasCallerStorageTag
   callerStorageTag = storageTag;
 end
-% Optional 1x5 participant letters for misfitGallery (Ex,Hc,Hd,PD,DD).
+% Optional 1x4 participant letters for misfitGallery (Ex,Hc,Hd,PD).
 misfitGalleryParticipantsOverride = {};
 if exist('misfitGalleryParticipants', 'var') && ~isempty(misfitGalleryParticipants)
   misfitGalleryParticipantsOverride = misfitGalleryParticipants;
@@ -77,21 +77,22 @@ else
   analysisList = {...
     %'experimentalDesign'; ...
     %'dataCounts'; ...
-    %'latentMixturePosteriors'; ...
+        'latentMixturePosteriorsDescriptiveAdequacy'; ...
+    'mapModelPosteriorPredictive'; ...
+    'misfitGallery'; ...
+      'parameterChange'; ...
+    % end paper
+   %'%latentMixturePosteriors'; ...
+ %'parameterInferences'; ...
     %'latentMixturePosteriorsHalf'; ...
     %'latentMixturePosteriorsDouble'; ...
-    %'latentMixturePosteriorsDescriptiveAdequacy'; ...
     %'latentMixturePriorRobustness'; ...
-    %'mapModelPosteriorPredictive'; ...
     %'allModelPosteriorPredictive'; ...
-    % 'misfitGallery'; ...
     %'mapModelForcedChoiceMatch'; ...
     %'modelAgreementTables'; ...
     %'mapModelParameterRobustness'; ...
-    %'parameterInferences'; ...
-    'parameterChange'; ...
-    % 'allParameterInferences'; ...
-    };
+  % 'allParameterInferences'; ...
+  };
 end
 clear overrideList;
 
@@ -129,7 +130,10 @@ fprintf('drawFiguresEntrop storageTag = ''%s'' (empty = canonical)\n', storageTa
 outputSubdirByAnalysis = containers.Map( ...
   {'experimentalDesign', 'dataCounts', ...
    'latentMixturePosteriors', 'latentMixturePosteriorsHalf', ...
-   'latentMixturePosteriorsDouble', 'latentMixturePosteriorsDescriptiveAdequacy', ...
+   'latentMixturePosteriorsDouble', ...
+   'latentMixturePosteriorsDescriptiveAdequacy', ...
+   'latentMixturePosteriorsDescriptiveAdequacyHalf', ...
+   'latentMixturePosteriorsDescriptiveAdequacyDouble', ...
    'latentMixturePriorRobustness', ...
    'mapModelPosteriorPredictive', 'allModelPosteriorPredictive', ...
    'misfitGallery', ...
@@ -138,7 +142,10 @@ outputSubdirByAnalysis = containers.Map( ...
    'allParameterInferences', 'parameterChange'}, ...
   {'basic', 'basic', ...
    'latentMixture', 'latentMixture', ...
-   'latentMixture', 'latentMixture', ...
+   'latentMixture', ...
+   'latentMixture', ...
+   'latentMixture', ...
+   'latentMixture', ...
    'latentMixture', ...
    'descriptiveAdequacy', 'descriptiveAdequacy', ...
    'descriptiveAdequacy', ...
@@ -259,7 +266,7 @@ for analysisIdx = 1:numel(analysisList)
       set(F, 'Color', 'w', 'renderer', 'painters');
 
       subplot(2, 1, 1); cla; hold on;
-      outcomesLabel = {'5150', '5400', '5450', '5600', '', '', '6050', '6200', '6350', '6500'};
+      outcomesLabel = {'5150', '5300', '5450', '5600', '', '', '6050', '6200', '6350', '6500'};
       outcomes = [5150 5300 5450 5600 0 0 6050 6200 6350 6500];
       xTickLabel = {'1', '2', '3', '4', '', '', '7', '8', '9', '10'};
       set(gca, ...
@@ -275,7 +282,7 @@ for analysisIdx = 1:numel(analysisList)
         'clipping', 'off', ...
         'fontsize'   , fontSize);
       moveAxis(gca, [1 1 1 1], [0.025 0 0 0]);
-      H(1) = text(-0.25, 6, 'Large Outcomes', 'fontsize', fontSize+2, ...
+      H(1) = text(-0.25, 6, 'Large Rewards', 'fontsize', fontSize+2, ...
         'vert', 'mid', 'hor', 'cen', 'rot', 90);
       H(2) =  text(0.5, 1.5, {'small', 'intervals'},  'fontsize', fontSize-2, ...
         'vert', 'mid', 'hor', 'cen','rot', 90);
@@ -284,7 +291,7 @@ for analysisIdx = 1:numel(analysisList)
       H(4) = text(0.5, 9.5, {'large', 'intervals'},  'fontsize', fontSize-2, ...
         'vert', 'mid', 'hor', 'cen','rot', 90);
 
-      H(5) =  text(-0.25, 2.5+17, 'Small Outcomes', 'fontsize', fontSize+2, ...
+      H(5) =  text(-0.25, 2.5+17, 'Small Rewards', 'fontsize', fontSize+2, ...
         'vert', 'mid', 'hor', 'cen', 'rot', 90);
       H(6) =  text(0.5, 2.5+17, {'large', 'intervals'},  'fontsize', fontSize-2, ...
         'vert', 'mid', 'hor', 'cen','rot', 90);
@@ -692,13 +699,29 @@ for analysisIdx = 1:numel(analysisList)
       end
 
     %% ================================================================
-    case 'latentMixturePosteriorsDescriptiveAdequacy'
+    case {'latentMixturePosteriorsDescriptiveAdequacy', ...
+        'latentMixturePosteriorsDescriptiveAdequacyHalf', ...
+        'latentMixturePosteriorsDescriptiveAdequacyDouble'}
       % Same 5x5 latent-mixture posterior bars as latentMixturePosteriors,
       % plus mean P(observed decision) markers (0-1 on the same axis).
       % MAP model: filled black circle + two-letter code above; others: open.
+      % Half/Double: mixture bars from mu-prec robustness mats; P(obs)
+      % overlays use matching hierarchical mu-prec fits when present.
 
-      mixStem = mixtureName;
-      sgtitleStr = 'Latent mixture posteriors with mean P(observed)';
+      switch analysisName
+        case 'latentMixturePosteriorsDescriptiveAdequacyHalf'
+          mixStem = 'latentMixtureHierarchicalMuPrecHalf_entrop';
+          precLabel = 'Half';
+          sgtitleStr = 'Latent mixture posteriors with mean P(observed) (half priors)';
+        case 'latentMixturePosteriorsDescriptiveAdequacyDouble'
+          mixStem = 'latentMixtureHierarchicalMuPrecDouble_entrop';
+          precLabel = 'Double';
+          sgtitleStr = 'Latent mixture posteriors with mean P(observed) (double priors)';
+        otherwise
+          mixStem = mixtureName;
+          precLabel = '';
+          sgtitleStr = 'Latent mixture posteriors with mean P(observed)';
+      end
 
       % graphics constants
       fontSize = 10;
@@ -721,7 +744,7 @@ for analysisIdx = 1:numel(analysisList)
       showXLabel = true;
       showYLabel = true;
       xLabelStr = 'Model';
-      yLabelStr = 'Posterior Probability / Mean P(Observed)';
+      yLabelStr = 'Posterior Probability';
       supAxesPos = [];
       supAxesBuf = 0.05;
       supYLabelCloser = 0.025;
@@ -748,6 +771,11 @@ for analysisIdx = 1:numel(analysisList)
       end
       fprintf('Loading %s\n', agreeCsv);
       matchProp = loadModelParticipantFitCsv(agreeCsv, modelShort, nP);
+      if ~isempty(precLabel)
+        matchProp = overlayMeanObsFromMuPrecFits( ...
+          matchProp, precLabel, storageDir, cognitiveStems, dataName, engine, ...
+          storageTag, data, d, nP, nT, cognitiveJagsNames);
+      end
 
       mixPath = resolveStorageMatPath(storageDir, mixStem, dataName, engine, storageTag);
       if ~isfile(mixPath)
@@ -1723,25 +1751,27 @@ for analysisIdx = 1:numel(analysisList)
 
     %% ================================================================
     case 'misfitGallery'
-      % 1x5: diagnostic posterior-predictive misfits for Ex, Hc, Hd, PD, DD.
+      % 1x4: diagnostic posterior-predictive misfits for Ex, Hc, Hd, PD.
       % Each panel is one model applied to one noncontaminant participant
       % chosen to illustrate how that model fails (override via
-      % misfitGalleryParticipants = {'D','H','S','V','E'} before running).
+      % misfitGalleryParticipants = {'E','E','E','K'} before running).
 
       % graphics constants (match allModelPosteriorPredictive tiles)
-      fontSize = 24;
+      fontSize = 18;
       titleFontSize = 24;
       titleFontName = 'Helvetica';
       titleFontWeight = 'normal';
-      labelFontSize = 28;
+      labelFontSize = 24;
       nRows = 1;
-      nCols = 5;
-      figPos = [0.1 0.35 0.8 0.22];
+      nCols = 4;
+      figPos = [0.1 0.35 0.7 0.22];
       nPredSamples = 4000;
       probDrawMin = 1 / max(500, nPredSamples);
       tileLineWidth = 0.65;
       obsEdgeDarken = 0.35;
       obsLineWidth = 1.5;
+      obsConnectLineWidth = 0.7;
+      obsConnectLineColor = [0 0 0];
       minObsSide = 0.36;
       predFaceClr = [1 1 1];
       predEdgeClr = 0.55 * [1 1 1];
@@ -1775,12 +1805,11 @@ for analysisIdx = 1:numel(analysisList)
       regenerateAllModelPostPredSummaries = false;
 
       % Models shown left-to-right (indices into modelShort / summary).
-      misfitModels = [1 2 3 4 5]; % Ex, Hc, Hd, PD, DD
-      % Default exemplars (noncontaminant D–X): interval-effect participants
-      % for alternative-based models; large-vs-small reward contrast for PD;
-      % strong DD mean-P(obs) / predictive gap for DD. Overwrite with
-      % misfitGalleryParticipants before calling drawFiguresEntrop.
-      misfitParticipants = {'E', 'E', 'E', 'K', 'H'};
+      misfitModels = [1 2 3 4]; % Ex, Hc, Hd, PD
+      % Default exemplars (noncontaminant): interval-effect participants
+      % for alternative-based models; large-vs-small reward contrast for PD.
+      % Overwrite with misfitGalleryParticipants before calling drawFiguresEntrop.
+      misfitParticipants = {'E', 'E', 'H', 'V'};
       if exist('misfitGalleryParticipantsOverride', 'var') && ...
           ~isempty(misfitGalleryParticipantsOverride)
         misfitParticipants = misfitGalleryParticipantsOverride;
@@ -1949,6 +1978,29 @@ for analysisIdx = 1:numel(analysisList)
               edge = max(0, face * (1 - obsEdgeDarken));
               rectangle(ax, 'Position', [dispIdx - side / 2, ko - side / 2, side, side], ...
                 'FaceColor', face, 'EdgeColor', edge, 'LineWidth', obsLineWidth);
+            end
+            % Trace observed counts across problems (rectangle centers).
+            obsX = nan(1, nPairs);
+            obsY = nan(1, nPairs);
+            for dispIdx = 1:nPairs
+              pj = problemOrder(dispIdx);
+              nk = nTpMat(pp, pj);
+              ko = obsRow(pj);
+              if nk <= 0 || ~isfinite(ko)
+                continue;
+              end
+              ko = round(ko);
+              if ko < 0 || ko > nk
+                continue;
+              end
+              obsX(dispIdx) = dispIdx;
+              obsY(dispIdx) = ko;
+            end
+            ok = isfinite(obsX) & isfinite(obsY);
+            if nnz(ok) >= 2
+              plot(ax, obsX(ok), obsY(ok), '-', ...
+                'Color', obsConnectLineColor, ...
+                'LineWidth', obsConnectLineWidth);
             end
             hold(ax, 'off');
           end
@@ -2807,8 +2859,10 @@ for analysisIdx = 1:numel(analysisList)
 
     %% ================================================================
     case 'parameterChange'
-      % UT (left) and IT (right): each row one parameter; x = MAP users of
-      % that model in participant order; mean + 95% CI with means connected.
+      % Columns: UT / DD / IT (or subset), left→right by MAP participant count.
+      % Each row one parameter; x = MAP users in participant order; mean + CI.
+      % Entropification w is always in the bottom row (gaps allowed above).
+      % All w panels share one y-axis scale.
 
       fontSize = 10;
       tickLabelFontSize = fontSize + 1;
@@ -2816,8 +2870,8 @@ for analysisIdx = 1:numel(analysisList)
       titleFontName = 'Helvetica';
       titleFontWeight = 'normal';
       labelFontSize = 16;
-      paramLabelFontSize = 12;
-      figPos = [0.2 0.2 0.5 0.7];
+      paramLabelFontSize = 14; % LaTeX interpreter reads smaller; +2 vs body text
+      figPos = [0.15 0.15 0.7 0.75];
       CIbounds = [25 75];
       markerFace = pantone.ClassicBlue;
       markerSize = 5;
@@ -2837,7 +2891,7 @@ for analysisIdx = 1:numel(analysisList)
       showZeroLine = true;
       zeroLineColor = [0.7 0.7 0.7];
       showXTickLabelsOuterOnly = true; % bottom row only
-      showYTickLabelsOuterOnly = false;
+      yTickLabelsEndsOnly = true; % keep middle tick marks; label only ends
       showModelColumnTitles = true;
       modelTitleYNorm = 1.08;
       xTickLabelRotation = 0;
@@ -2850,13 +2904,12 @@ for analysisIdx = 1:numel(analysisList)
       supYLabelCloser = 0.02;
       supXLabelCloser = 0.02;
 
-      modelIdx = [7 8]; % UT, IT
-      parameterNamesByModel = { ...
-        {'gamma', 'kappa', 'tau', 'vartheta', 'eta', 'w'}; ... % UT
-        {'betaRA', 'betaRR', 'betaTA', 'betaTR', 'beta0', 'w'} ... % IT
-        };
-      nRows = max(cellfun(@numel, parameterNamesByModel));
-      nCols = numel(modelIdx);
+      % Candidate MAP models shown as columns; left→right by MAP count (desc).
+      candidateModelIdx = [7 5 8]; % UT, DD, IT
+      parameterNamesByModelIdx = containers.Map('KeyType', 'double', 'ValueType', 'any');
+      parameterNamesByModelIdx(7) = {'gamma', 'kappa', 'tau', 'vartheta', 'eta', 'w'}; % UT
+      parameterNamesByModelIdx(5) = {'omega', 'delta', 'w'}; % DD
+      parameterNamesByModelIdx(8) = {'betaRA', 'betaRR', 'betaTA', 'betaTR', 'beta0', 'w'}; % IT
 
       mixPath = resolveStorageMatPath(storageDir, mixtureName, dataName, engine, storageTag);
       if ~isfile(mixPath)
@@ -2868,9 +2921,21 @@ for analysisIdx = 1:numel(analysisList)
       [~, mapModel] = max(P, [], 1);
       clear mixS P;
 
+      nMapCand = arrayfun(@(mi) sum(mapModel == mi), candidateModelIdx);
+      [nMapSorted, ord] = sort(nMapCand, 'descend');
+      modelIdx = candidateModelIdx(ord);
+      parameterNamesByModel = arrayfun(@(mi) parameterNamesByModelIdx(mi), ...
+        modelIdx, 'UniformOutput', false);
+      nRows = max(cellfun(@numel, parameterNamesByModel));
+      nCols = numel(modelIdx);
+      fprintf('parameterChange column order (MAP count desc): %s\n', ...
+        strjoin(arrayfun(@(i) sprintf('%s(%d)', lower(modelShort{modelIdx(i)}), ...
+          nMapSorted(i)), 1:nCols, 'UniformOutput', false), ', '));
+
       mnByModel = cell(1, nCols);
       ciByModel = cell(1, nCols);
       ppsByModel = cell(1, nCols);
+      rowParamByModel = cell(1, nCols); % row -> param index (NaN = empty)
       for col = 1:nCols
         mi = modelIdx(col);
         pNames = parameterNamesByModel{col};
@@ -2879,6 +2944,18 @@ for analysisIdx = 1:numel(analysisList)
         ppsByModel{col} = pps(:)';
         fprintf('%s MAP participants (%d): %s\n', modelShort{mi}, numel(pps), ...
           strjoin(participantLabels(pps), ', '));
+
+        % Non-w params fill from the top; w always on bottom row.
+        rowParam = nan(1, nRows);
+        wIdx = find(strcmp(pNames, 'w'), 1);
+        nonW = setdiff(1:nPar, wIdx, 'stable');
+        for ii = 1:numel(nonW)
+          rowParam(ii) = nonW(ii);
+        end
+        if ~isempty(wIdx)
+          rowParam(nRows) = wIdx;
+        end
+        rowParamByModel{col} = rowParam;
 
         mnByModel{col} = nan(numel(pps), nPar);
         ciByModel{col} = nan(numel(pps), nPar, 2);
@@ -2904,6 +2981,29 @@ for analysisIdx = 1:numel(analysisList)
         clear S;
       end
 
+      % Shared y-limits for all w panels across model columns.
+      wVals = [];
+      for col = 1:nCols
+        pNames = parameterNamesByModel{col};
+        wIdx = find(strcmp(pNames, 'w'), 1);
+        if isempty(wIdx) || isempty(ppsByModel{col})
+          continue;
+        end
+        vals = [mnByModel{col}(:, wIdx)', reshape(ciByModel{col}(:, wIdx, :), 1, [])];
+        wVals = [wVals, vals(isfinite(vals))]; %#ok<AGROW>
+      end
+      if isempty(wVals)
+        wYLimShared = [-1 1];
+      else
+        pad = yPadFrac * max(range(wVals), eps);
+        wYLimShared = [min(wVals) - pad, max(wVals) + pad];
+        if wYLimShared(1) == wYLimShared(2)
+          wYLimShared = wYLimShared + [-1 1];
+        end
+        wYLimShared(2) = wYLimShared(2) + ...
+          meanLabelYOffsetFrac * max(diff(wYLimShared), eps);
+      end
+
       F = figure; clf;
       setFigure(F, figPos, '');
       set(F, 'Color', 'w', 'renderer', 'painters');
@@ -2912,18 +3012,20 @@ for analysisIdx = 1:numel(analysisList)
       for col = 1:nCols
         mi = modelIdx(col);
         pNames = parameterNamesByModel{col};
-        nPar = numel(pNames);
         pps = ppsByModel{col};
         nUse = numel(pps);
         latexLabs = parameterLatexLabels(pNames);
+        rowParam = rowParamByModel{col};
 
         for k = 1:nRows
           panel = (k - 1) * nCols + col;
           ax = subplot(nRows, nCols, panel);
-          if k > nPar
+          pk = rowParam(k);
+          if ~isfinite(pk)
             axis(ax, 'off');
             continue;
           end
+          isW = strcmp(pNames{pk}, 'w');
 
           hold(ax, 'on');
           if nUse == 0
@@ -2933,12 +3035,12 @@ for analysisIdx = 1:numel(analysisList)
           else
             xs = 1:nUse;
             for ii = 1:nUse
-              plot(ax, [xs(ii) xs(ii)], squeeze(ciByModel{col}(ii, k, :))', '-', ...
+              plot(ax, [xs(ii) xs(ii)], squeeze(ciByModel{col}(ii, pk, :))', '-', ...
                 'Color', markerFace, 'LineWidth', ciLineWidth);
             end
-            plot(ax, xs, mnByModel{col}(:, k), '-', ...
+            plot(ax, xs, mnByModel{col}(:, pk), '-', ...
               'Color', markerFace, 'LineWidth', meanLineWidth);
-            plot(ax, xs, mnByModel{col}(:, k), 'o', ...
+            plot(ax, xs, mnByModel{col}(:, pk), 'o', ...
               'MarkerFaceColor', markerFace, ...
               'MarkerEdgeColor', 'none', ...
               'MarkerSize', markerSize);
@@ -2949,8 +3051,11 @@ for analysisIdx = 1:numel(analysisList)
           else
             xlim(ax, [1 nUse] + [-0.5 0.5 + meanLabelXLimPad]);
           end
-          if isempty(yLimFixed)
-            vals = [mnByModel{col}(:, k)', reshape(ciByModel{col}(:, k, :), 1, [])];
+          if isW
+            yl = wYLimShared;
+            ylim(ax, yl);
+          elseif isempty(yLimFixed)
+            vals = [mnByModel{col}(:, pk)', reshape(ciByModel{col}(:, pk, :), 1, [])];
             vals = vals(isfinite(vals));
             if isempty(vals)
               yl = [-1 1];
@@ -2972,12 +3077,12 @@ for analysisIdx = 1:numel(analysisList)
             ylNow = ylim(ax);
             yOff = meanLabelYOffsetFrac * max(diff(ylNow), eps);
             for ii = 1:nUse
-              mu = mnByModel{col}(ii, k);
+              mu = mnByModel{col}(ii, pk);
               if ~isfinite(mu)
                 continue;
               end
               text(ax, ii + meanLabelXOffset, mu + yOff, ...
-                sprintf('%.2g', mu), ...
+                plainAxisNumberLabel(mu), ...
                 'HorizontalAlignment', 'left', ...
                 'VerticalAlignment', 'bottom', ...
                 'FontSize', meanLabelFontSize, ...
@@ -3009,8 +3114,9 @@ for analysisIdx = 1:numel(analysisList)
           else
             set(ax, 'XTickLabel', []);
           end
+          applyPlainYTicksEndsOnly(ax, yTickLabelsEndsOnly);
 
-          ylabel(ax, latexLabs{k}, ...
+          ylabel(ax, latexLabs{pk}, ...
             'Interpreter', 'latex', ...
             'FontSize', paramLabelFontSize, ...
             'Rotation', 0, ...
@@ -3024,6 +3130,8 @@ for analysisIdx = 1:numel(analysisList)
           title(axX, '');
           title(axY, '');
           title(ax, '');
+          % Raxes copies tick labels; re-apply plain / ends-only on the Y copy.
+          applyPlainYTicksEndsOnly(axY, yTickLabelsEndsOnly);
 
           if showModelColumnTitles && k == 1
             text(ax, 0.5, modelTitleYNorm, lower(modelShort{mi}), ...
@@ -3075,7 +3183,7 @@ for analysisIdx = 1:numel(analysisList)
     %% ================================================================
     case 'allParameterInferences'
       % One 5x5 figure per model: that model's parameter means (+ 95% CI)
-      % for every participant (parallel to allModelPosteriorPredictive).
+      % for every participant under that model (not MAP-subset).
 
       fontSize = 10;
       tickLabelFontSize = fontSize + 1;
@@ -3097,7 +3205,7 @@ for analysisIdx = 1:numel(analysisList)
       raxesYShift = 0.01;
       moveAxisScale = [1 1 1 0.7];
       moveAxisShift = [0 0.015 0 0];
-      yLimFixed = [-5 10];
+      yLimFixed = []; % per-panel auto so every participant's values stay in view
       meanLabelFontSize = 7;
       meanLabelYOffset = 0.45;
       nRows = 5;
@@ -3203,7 +3311,7 @@ for analysisIdx = 1:numel(analysisList)
               yl = [-1 1];
             else
               pad = 0.1 * max(range(vals), 1);
-              yl = [min(vals) - pad, max(vals) + pad];
+              yl = [min(vals) - pad, max(vals) + pad + meanLabelYOffset];
             end
             ylim(ax, yl);
           else
@@ -3284,16 +3392,66 @@ for k = 1:numel(paramNames)
     case 'gamma',    labels{k} = '$\gamma$';
     case 'vartheta', labels{k} = '$\vartheta$';
     case 'eta',      labels{k} = '$\eta$';
-    case 'betaRA',   labels{k} = '$\beta_{RA}$';
-    case 'betaRR',   labels{k} = '$\beta_{RR}$';
-    case 'betaTA',   labels{k} = '$\beta_{TA}$';
-    case 'betaTR',   labels{k} = '$\beta_{TR}$';
+    case 'betaRA',   labels{k} = '$\beta_{ra}$';
+    case 'betaRR',   labels{k} = '$\beta_{rr}$';
+    case 'betaTA',   labels{k} = '$\beta_{ta}$';
+    case 'betaTR',   labels{k} = '$\beta_{tr}$';
     case 'beta0',    labels{k} = '$\beta_0$';
     case 'alpha',    labels{k} = '$\alpha$';
     case 'w',        labels{k} = '$w$';
     otherwise,       labels{k} = sprintf('$\\mathrm{%s}$', paramNames{k});
   end
 end
+end
+
+function s = plainAxisNumberLabel(v)
+%PLAINAXISNUMBERLABEL  Decimal tick/mean label without scientific notation.
+if ~isfinite(v)
+  s = '';
+  return;
+end
+if v == 0
+  s = '0';
+  return;
+end
+av = abs(v);
+if av >= 1000
+  s = sprintf('%.0f', v);
+elseif av >= 100
+  s = sprintf('%.1f', v);
+elseif av >= 10
+  s = sprintf('%.2f', v);
+elseif av >= 1
+  s = sprintf('%.2f', v);
+elseif av >= 0.01
+  s = sprintf('%.3f', v);
+else
+  s = sprintf('%.4f', v);
+end
+s = regexprep(s, '(\.\d*?)0+$', '$1');
+s = regexprep(s, '\.$', '');
+end
+
+function applyPlainYTicksEndsOnly(ax, endsOnly)
+%APPLYPLAINYTICKSENDSONLY  No sci notation; optionally label only end ticks.
+if ~isgraphics(ax)
+  return;
+end
+try
+  ax.YAxis.Exponent = 0;
+catch
+end
+yt = get(ax, 'YTick');
+if isempty(yt)
+  return;
+end
+labs = arrayfun(@plainAxisNumberLabel, yt, 'UniformOutput', false);
+if endsOnly && numel(labs) > 2
+  for i = 2:(numel(labs) - 1)
+    labs{i} = '';
+  end
+end
+set(ax, 'YTickLabel', labs);
 end
 
 function [mapModel, mapProb, pmfPadByParticipant, rebuilt] = loadOrBuildMapPostPredSummary( ...
@@ -3881,6 +4039,31 @@ for p = 1:nPairs
   for k = 0:nk
     pmfPad(p, k + 1) = mean(col == k);
   end
+end
+end
+
+function matchProp = overlayMeanObsFromMuPrecFits( ...
+    matchProp, precLabel, storageDir, cognitiveStems, dataName, engine, ...
+    storageTag, data, d, nP, nT, cognitiveJagsNames)
+%OVERLAYMEANOBSFROMMUPRECFITS  Replace P(obs) rows with mu-prec hierarchical fits.
+for mi = 1:numel(cognitiveStems)
+  stem = cognitiveMuPrecStem(cognitiveStems{mi}, precLabel);
+  fpath = resolveStorageMatPath(storageDir, stem, dataName, engine, storageTag);
+  if ~isfile(fpath)
+    fprintf('No %s hierarchical fit for %s — keeping original P(obs)\n', ...
+      precLabel, cognitiveStems{mi});
+    continue;
+  end
+  fprintf('P(obs) from %s\n', fpath);
+  L = load(fpath, 'chains');
+  for pp = 1:nP
+    meanTh = mapModelMeanTheta(L.chains, data, cognitiveJagsNames, mi, pp, nT);
+    if isempty(meanTh) || numel(meanTh) ~= nT
+      continue;
+    end
+    matchProp(mi, pp) = meanObsProbFromMeanTheta(meanTh, d.LL(pp, :));
+  end
+  clear L;
 end
 end
 
